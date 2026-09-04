@@ -3,27 +3,24 @@
 import time
 import flask
 from flask_compress import Compress
-from flask import abort, make_response, request, jsonify, render_template_string
+from flask import request, jsonify, render_template_string
 from os import path, environ
 import cv2
 import numpy as np
-import requests
 import logging
-import base64
 import threading
 
 from lib.detection_model import load_net, detect
 from lib import ha as ha_lib
 from lib.config_store import load_config, save_config
 
-THRESH = 0.2  # The threshold for a box to be considered a positive detection
 
 # Optional last-frame-wins frame-rate limiter. When MAX_FPS is set (e.g. "1"),
-# /p/ throttles down to at most MAX_FPS inferences per second; requests that
-# arrive within an already-consumed time slot immediately return the previous
-# frame's detection list instead of running the Hailo device (which is thereby
-# left free for other consumers). Unset by default => no limiting. Set via the
-# add-on configuration option `max_fps`.
+# detection is throttled to at most MAX_FPS inferences per second; requests that
+# arrive within an already-consumed time slot immediately reuse the previous
+# detection list instead of running the Hailo device (which is thereby left free
+# for other consumers). Unset by default => no limiting. Set via the add-on
+# configuration option `max_fps`.
 MAX_FPS = environ.get('MAX_FPS')
 
 
@@ -160,50 +157,6 @@ net_main = load_net(path.join(model_dir, 'model.cfg'), path.join(model_dir, 'mod
 # process-wide throttle; the budget is global to the Hailo device.
 _rate_limiter = FrameRateLimiter(MAX_FPS)
 
-def draw_bounding_boxes(image, detections):
-    for detection in detections:
-        label, confidence, bbox = detection
-        x, y, w, h = [int(v) for v in bbox]
-        color = (0, 0, 255)  # Red color for bounding box
-        cv2.rectangle(image, (x, y), (x + w, y + h), color, 5)
-        text = f"{label}: {confidence:.2f}"
-        cv2.putText(image, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 1.5, color, 2)
-    return image
-
-@app.route('/p/', methods=['GET'])
-def get_p():
-    if 'img' in request.args:
-        try:
-            resp = requests.get(request.args['img'], stream=True, timeout=(0.1, 5))
-            resp.raise_for_status()
-            img_array = np.array(bytearray(resp.content), dtype=np.uint8)
-            img = cv2.imdecode(img_array, -1)
-            detections = _rate_limiter.run(
-                lambda: detect(net_main, img, thresh=THRESH)
-            )
-            return jsonify({'detections': detections})
-        except Exception as err:
-            app.logger.error(f"Failed to get image {request.args} - {err}")
-            abort(
-                make_response(
-                    jsonify(
-                        detections=[],
-                        message=f"Failed to get image {request.args} - {err}",
-                    ),
-                    400,
-                )
-            )
-    else:
-        app.logger.warn(f"Invalid request params: {request.args}")
-        abort(
-            make_response(
-                jsonify(
-                    detections=[], message=f"Invalid request params: {request.args}"
-                ),
-                422,
-            )
-        )
-
 @app.route('/hc/', methods=['GET'])
 def health_check():
     return 'ok' if net_main is not None else 'error'
@@ -219,37 +172,6 @@ def index():
         except Exception as err:
             logger.error("Failed to list cameras: %s", err)
     return render_template_string(_UI_PAGE, config=cfg, cameras=cameras, ha_ok=ha_ok)
-
-@app.route('/detect/', methods=['POST'])
-def failure_detect():
-    data = request.get_json()
-
-    img_base64 = data.get("img", None)
-    if img_base64 is None:
-        return jsonify({"error": "No image provided"}), 400
-
-    try:
-        img_bytes = base64.b64decode(img_base64)
-        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
-        img = cv2.imdecode(img_array, -1)
-
-        threshold = float(data.get("threshold", THRESH))
-
-        detections = detect(net_main, img, thresh=threshold)
-
-        img_with_boxes = draw_bounding_boxes(img, detections)
-
-        _, buffer = cv2.imencode('.jpg', img_with_boxes)
-        img_with_boxes_base64 = base64.b64encode(buffer).decode('utf-8')
-
-        return jsonify({
-            "detections": detections,
-            "image_with_detections": img_with_boxes_base64
-        }), 200
-
-    except Exception as e:
-        app.logger.error(f"Error processing image: {str(e)}")
-        return jsonify({"error": f"Failed to process image - {str(e)}"}), 500
 
 
 @app.route('/api/cameras', methods=['GET'])

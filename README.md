@@ -12,20 +12,14 @@ lets you pick one from a built-in web UI, then polls that camera's snapshot,
 runs inference and publishes the result back to HA (`binary_sensor.obico_failure`
 and `sensor.obico_confidence`). No companion integration is required.
 
-It still exposes the original **REST API** (`/detect/`, `/p/`, `/hc/`) for
-backwards compatibility, so the companion integration
-[`obico_ml_ha_integration`](https://github.com/nobodyguy/obico_ml_ha_integration)
-keeps working unchanged.
-
 ## Architecture
 
 ```
 camera (HA entity)
-   │  integration schedules a snapshot/URL
+   │  snapshot via HA REST API (Supervisor token)
    ▼
 HA addon (Flask :3333)
-   ├── /p/?img=<url>      fetch frame → detect
-   └── /detect/ POST      base64 frame → detect + annotated image
+   └── camera worker (daemon thread) → detect → publish to HA
         │
         ▼
 lib/hailo.py  (HailoNet)
@@ -57,7 +51,7 @@ corresponding HEF set is loaded automatically:
 | `app/lib/config_store.py` | persist camera-selection config to `/data` |
 | `app/lib/detection_model.py` | `load_net` → `HailoNet` (`.hef` only) |
 | `app/model/` | `obico_part*.hef`, `decode.onnx`, `model.meta`, `names` |
-| `app/server.py` | Flask app: REST API (`/detect/`, `/p/`, `/hc/`) + camera web UI + worker thread |
+| `app/server.py` | Flask app: camera-selection web UI + background detection worker |
 | `rootfs/` | s6 service lifecycle (exports config options as env vars) |
 | `hailo_assets/` | optional offline HailoRT binaries (`hailort_<V>_arm64.deb` + wheel) |
 
@@ -118,17 +112,14 @@ publishes the outcome back to HA.
 The background worker runs in a daemon thread; its current state is available at
 `GET /status`.
 
-## REST API
+## Endpoints (port 3333)
 
-- `GET /hc/` → `ok` (health)
-- `GET /p/?img=<encoded-snapshot-url>` → `{"detections": [...]}` (used by the integration)
-- `POST /detect/` with JSON `{"img": <base64>, "threshold": <float>}` →
-  `{"detections": [...], "image_with_detections": <base64 jpg>}`
 - `GET /` → camera-selection web UI
 - `GET /api/cameras` → `{"ok": true, "cameras": [...camera.* ids]}`
 - `GET/POST /api/config` → read/update `camera_entity`, `interval`, `threshold`
 - `POST /api/start`, `POST /api/stop` → start/stop the detection worker
 - `GET /status` → config, HA connectivity and last detection state
+- `GET /hc/` → `ok` (health)
 
 `MAX_FPS` (the `max_fps` addon option) is a **last-frame-wins** throttle on the
 shared Hailo: surplus requests reuse the previous frame's detections instead of
