@@ -1,0 +1,5 @@
+# Only the obsolete downloaded weights are excluded from the Docker context;
+# the shipped Hailo artifacts (obico_part*.hef, decode.onnx, model.cfg/meta/names)
+# are required by the image and must be included.
+model-weights*.onnx
+model-weights*.darknet
