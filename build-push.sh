@@ -15,11 +15,26 @@
 # Prerequisites:
 #   - docker with buildx (Docker Desktop / buildx plugin)
 #   - docker login ghcr.io with a token that has write:packages
+#
+# Buildkit skips the Docker Desktop credstore on --push, which results in an
+# anonymous 403 from GHCR. The helper below exports the saved ghcr.io creds as
+# DOCKER_AUTH_CONFIG so the push authenticates (unless already set).
 # ==============================================================================
 set -euo pipefail
 
 TAG="${1:-0.1}"
 PLATFORM="${2:-linux/arm64}"
+
+if [ -z "${DOCKER_AUTH_CONFIG:-}" ]; then
+  stored_creds="$(printf '%s\n' 'ghcr.io' | docker-credential-desktop get 2>/dev/null || true)"
+  if [ -n "${stored_creds}" ]; then
+    stored_user="$(printf '%s' "${stored_creds}" | jq -r .Username)"
+    stored_secret="$(printf '%s' "${stored_creds}" | jq -r .Secret)"
+    if [ -n "${stored_user}" ] && [ -n "${stored_secret}" ]; then
+      export DOCKER_AUTH_CONFIG="${DOCKER_AUTH_CONFIG:-$(printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' "$(printf '%s:%s' "${stored_user}" "${stored_secret}" | base64 | tr -d '\n')")}"
+    fi
+  fi
+fi
 
 case "${PLATFORM}" in
   linux/arm64) BUILD_ARCH="aarch64" ;;
