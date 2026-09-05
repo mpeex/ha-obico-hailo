@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 import logging
 import threading
+import base64
 
 from lib.detection_model import load_net, detect
 from lib import ha as ha_lib
@@ -156,6 +157,49 @@ net_main = load_net(path.join(model_dir, 'model.cfg'), path.join(model_dir, 'mod
 # One shared limiter per worker. With gunicorn --workers 1 this is a single
 # process-wide throttle; the budget is global to the Hailo device.
 _rate_limiter = FrameRateLimiter(MAX_FPS)
+
+def draw_bounding_boxes(image, detections):
+    for detection in detections:
+        label, confidence, bbox = detection
+        x, y, w, h = [int(v) for v in bbox]
+        color = (0, 0, 255)  # Red color for bounding box
+        cv2.rectangle(image, (x, y), (x + w, y + h), color, 5)
+        text = f"{label}: {confidence:.2f}"
+        cv2.putText(image, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 1.5, color, 2)
+    return image
+
+
+@app.route('/detect/', methods=['POST'])
+def failure_detect():
+    data = request.get_json()
+
+    img_base64 = data.get("img", None)
+    if img_base64 is None:
+        return jsonify({"error": "No image provided"}), 400
+
+    try:
+        img_bytes = base64.b64decode(img_base64)
+        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+        img = cv2.imdecode(img_array, -1)
+
+        threshold = float(data.get("threshold", 0.2))
+
+        detections = detect(net_main, img, thresh=threshold)
+
+        img_with_boxes = draw_bounding_boxes(img, detections)
+
+        _, buffer = cv2.imencode('.jpg', img_with_boxes)
+        img_with_boxes_base64 = base64.b64encode(buffer).decode('utf-8')
+
+        return jsonify({
+            "detections": detections,
+            "image_with_detections": img_with_boxes_base64
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Error processing image: {str(e)}")
+        return jsonify({"error": f"Failed to process image - {str(e)}"}), 500
+
 
 @app.route('/hc/', methods=['GET'])
 def health_check():

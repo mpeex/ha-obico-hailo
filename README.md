@@ -37,8 +37,7 @@ corresponding HEF set is loaded automatically:
 | Hailo-8     | `obico_part1.hef`  + `obico_part2.hef`    |
 | Hailo-8L    | `obico_part1_8l.hef` + `obico_part2_8l.hef` |
 
-> The `_8l` set is **not** committed yet — it must be compiled on an 8L machine
-> (`hailo/compile_hef.py --hw-arch hailo8l`) and dropped into `app/model/`.
+Both HEF sets ship in `app/model/` and are committed via Git LFS (`*.hef`).
 
 ## Layout
 
