@@ -12,15 +12,10 @@ arch:
   - amd64
 startup: services
 init: false
-map:
-  - config:ro
-privileged:
-  - SYS_RAWIO
-apparmor: false
-full_access: true
 stateful: true
+udev: true
 devices:
-  - /dev/hailo0:/dev/hailo0
+  - /dev/hailo0
 ports:
   3333/tcp: 3333
 webui: "http://[HOST]:[PORT:3333]"
