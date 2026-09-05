@@ -45,6 +45,9 @@ Both HEF sets ship in `app/model/` and are committed via Git LFS (`*.hef`).
 |------|---------|
 | `Dockerfile` | single self-contained addon image (HailoRT + onnxruntime + OpenCV + s6-overlay + Flask app) |
 | `config.yaml` | addon descriptor; `devices: /dev/hailo0`, options `max_fps`, `camera_entity`, `interval`, `threshold` |
+| `build.yaml` | builder base-image mapping (`python:3.11-slim-bookworm` per arch) |
+| `repository.yaml` | HA addon repository descriptor (name, url, maintainer) |
+| `build-push.sh` | cross-compile (docker buildx) + push to `ghcr.io/mpeex/obico-ha-app:<tag>` |
 | `app/lib/hailo.py`, `meta.py` | Hailo inference runtime (from obico-server) |
 | `app/lib/ha.py` | HA/Supervisor connectivity (token, cameras, snapshot, state publish) |
 | `app/lib/config_store.py` | persist camera-selection config to `/data` |
@@ -140,40 +143,33 @@ running inference, leaving the accelerator free for other consumers.
 
 ## Publish to GHCR
 
-Build and push the image manually (e.g. from the RPi5):
+Cross-compile and publish with the wrapper script (uses `docker buildx`,
+so `linux/arm64` can be built from any host — including a non-arm64 one):
 
 ```bash
-# Build on the target host. Set BUILD_ARCH to aarch64 (arm64 host) or amd64
-# (x86_64 host); the matching HailoRT .deb/.whl names are derived automatically.
-docker build --build-arg BUILD_ARCH=aarch64 -t obico-ml-hailo:4.21 .   # arm64 host
-docker build --build-arg BUILD_ARCH=amd64 -t obico-ml-hailo:4.21 .    # x86_64 host
-
-# Offline build: drop the 4.21.0 .deb/.whl matching your arch into hailo_assets/
-# first (they are gitignored); the build uses them instead of downloading.
-#   aarch64 → hailort_4.21.0_arm64.deb + hailort-4.21.0-cp311-cp311-linux_aarch64.whl
-#   amd64   → hailort_4.21.0_amd64.deb + hailort-4.21.0-cp311-cp311-linux_x86_64.whl
-
-# Tag and push
-docker tag obico-ml-hailo:4.21 ghcr.io/mpeex/obico-ha-app:4.21
-docker tag obico-ml-hailo:4.21 ghcr.io/mpeex/obico-ha-app:latest
-docker push ghcr.io/mpeex/obico-ha-app:4.21
-docker push ghcr.io/mpeex/obico-ha-app:latest
+docker login ghcr.io
+./build-push.sh                 # linux/arm64, tag 4.21
+./build-push.sh 4.21 linux/amd64
 ```
 
-For a multi-arch manifest, build and push once per arch, tagging each result
-with an arch-specific tag, then combine:
+`build-push.sh` sets the right `BUILD_ARCH` from the platform (`aarch64` for
+`linux/arm64`, `amd64` for `linux/amd64`), so the matching HailoRT .deb/.whl
+names are derived automatically and the final image is tagged and pushed as
+`ghcr.io/mpeex/obico-ha-app:<tag>`.
+
+For an offline build, drop the 4.21.0 `.deb`/`.whl` matching your arch into
+`hailo_assets/` first (they are gitignored); the build uses them instead of
+downloading:
+
+- aarch64 → `hailort_4.21.0_arm64.deb` + `hailort-4.21.0-cp311-cp311-linux_aarch64.whl`
+- amd64 → `hailort_4.21.0_amd64.deb` + `hailort-4.21.0-cp311-cp311-linux_x86_64.whl`
+
+For a multi-arch manifest, run the script once per platform (docker buildx
+builds and pushes each arch with the same tag, still combinable manually):
 
 ```bash
-# arm64 host
-docker build --build-arg BUILD_ARCH=aarch64 -t obico-ml-hailo:4.21 .
-docker tag obico-ml-hailo:4.21 ghcr.io/mpeex/obico-ha-app:4.21-arm64
-docker push ghcr.io/mpeex/obico-ha-app:4.21-arm64
-
-# x86_64 host
-docker build --build-arg BUILD_ARCH=amd64 -t obico-ml-hailo:4.21 .
-docker tag obico-ml-hailo:4.21 ghcr.io/mpeex/obico-ha-app:4.21-amd64
-docker push ghcr.io/mpeex/obico-ha-app:4.21-amd64
-
+# arm64 variant (already pushed by ./build-push.sh ... linux/arm64)
+# amd64 variant comes from running it with linux/amd64
 # any host
 docker manifest create ghcr.io/mpeex/obico-ha-app:4.21 \
   ghcr.io/mpeex/obico-ha-app:4.21-arm64 \
