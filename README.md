@@ -51,7 +51,7 @@ Both HEF sets ship in `app/model/` and are committed via Git LFS (`*.hef`).
 | `config.yaml` | addon descriptor; `devices: /dev/hailo0`, options `max_fps`, `camera_entity`, `interval`, `threshold` |
 | `build.yaml` | builder base-image mapping (`python:3.11-slim-bookworm` per arch) |
 | `repository.yaml` | HA addon repository descriptor (name, url, maintainer) |
-| `build-push.sh` | cross-compile (docker buildx) + push to `ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.1` |
+| `build-push.sh` | cross-compile (docker buildx) + push to `ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.2` |
 | `app/lib/hailo.py`, `meta.py` | Hailo inference runtime (from obico-server) |
 | `app/lib/ha.py` | HA/Supervisor connectivity (token, cameras, snapshot, state publish) |
 | `app/lib/config_store.py` | persist camera-selection config to `/data` |
@@ -152,14 +152,14 @@ so `linux/arm64` can be built from any host — including a non-arm64 one):
 
 ```bash
 docker login ghcr.io
-./build-push.sh                 # linux/arm64, tag 0.1
-./build-push.sh 0.1 linux/amd64
+./build-push.sh                 # linux/arm64, tag 0.2
+./build-push.sh 0.2 linux/amd64
 ```
 
 `build-push.sh` sets the right `BUILD_ARCH` from the platform (`aarch64` for
 `linux/arm64`, `amd64` for `linux/amd64`), so the matching HailoRT .deb/.whl
 names are derived automatically and the final image is tagged and pushed as
-`ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.1` (the `<arch>` suffix matching
+`ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.2` (the `<arch>` suffix matching
 the `{arch}` placeholder in `config.yaml`).
 
 For an offline build, drop the 4.21.0 `.deb`/`.whl` matching your arch into
@@ -176,14 +176,14 @@ builds and pushes each arch with the same tag, still combinable manually):
 # arm64 variant (already pushed by ./build-push.sh ... linux/arm64)
 # amd64 variant comes from running it with linux/amd64
 # any host
-docker manifest create ghcr.io/mpeex/obico_ml_hailo_addon:0.1 \
-  ghcr.io/mpeex/obico_ml_hailo_addon-aarch64:0.1 \
-  ghcr.io/mpeex/obico_ml_hailo_addon-amd64:0.1
-docker manifest push ghcr.io/mpeex/obico_ml_hailo_addon:0.1
+docker manifest create ghcr.io/mpeex/obico_ml_hailo_addon:0.2 \
+  ghcr.io/mpeex/obico_ml_hailo_addon-aarch64:0.2 \
+  ghcr.io/mpeex/obico_ml_hailo_addon-amd64:0.2
+docker manifest push ghcr.io/mpeex/obico_ml_hailo_addon:0.2
 ```
 
 (Requires `docker login ghcr.io` with a token that has `write:packages`.) The
-image version (`0.1`, from `config.yaml`) is the Docker tag Supervisor pulls;
+image version (`0.2`, from `config.yaml`) is the Docker tag Supervisor pulls;
 the HailoRT version stays pinned inside the Dockerfile (`4.21.0`).
 
 ## License

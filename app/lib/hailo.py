@@ -86,15 +86,20 @@ class HailoNet:
         # Use explicit device_ids from Device.scan() so that VDevice() works
         # even when hailort_service is running (HailoRT quirk on single-device
         # platforms: bare VDevice() reports HAILO_OUT_OF_PHYSICAL_DEVICES).
-        # multi_process_service=True + a HailoRT scheduling algorithm lets other
-        # processes (e.g. face detection) share the same physical Hailo device
-        # via the HailoRT service; the two options are required together.
+        #
+        # HAILORT_MULTI_PROCESS_SERVICE (default: off) opt-in to share the
+        # physical device with other processes (e.g. face detection) through the
+        # hailort_service gRPC daemon. It requires the hailort_service daemon to
+        # be running and, with it, a HailoRT scheduling algorithm. The add-on by
+        # default uses the Hailo-8 via direct PCIe access (/dev/hailo0), which
+        # needs no daemon.
         from hailo_platform import Device as _Device
         _ids = _Device.scan()
         _vdevice_params = VDevice.create_params()
-        _vdevice_params.multi_process_service = True
-        if SchedulingAlgorithm is not None:
-            _vdevice_params.scheduling_algorithm = SchedulingAlgorithm.ROUND_ROBIN
+        if os.environ.get('HAILORT_MULTI_PROCESS_SERVICE'):
+            _vdevice_params.multi_process_service = True
+            if SchedulingAlgorithm is not None:
+                _vdevice_params.scheduling_algorithm = SchedulingAlgorithm.ROUND_ROBIN
         if _ids:
             _vdevice_params.device_ids = _ids
         self.vdevice = VDevice(_vdevice_params)
