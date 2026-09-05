@@ -1,7 +1,11 @@
-# spaghetti-rpi5-aikit — Obico ML Hailo Home Assistant Addon
+# Obico ML Hailo Home Assistant Addon
+
+[![](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmpeex%2Fspaghetti-rpi5-aikit)
 
 Home Assistant **spaghetti / print-failure detection** addon for a **Raspberry Pi 5**
 with a **Hailo-8 / Hailo-8L** AI accelerator (Raspberry Pi AI HAT+).
+
+It should work also on x64 architectures, altough it is not tested.
 
 It runs a port of the **Obico YOLOv5** model (1 class: `failure`) on the Hailo
 device using the two compiled HEFs (`obico_part1.hef` / `obico_part2.hef`) plus
