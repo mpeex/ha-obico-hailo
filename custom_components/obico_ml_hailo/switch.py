@@ -12,26 +12,26 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class ObicoSwitch(CoordinatorEntity, SwitchEntity):
-    """Representation of a switch to enable/disable communication with the API."""
+    """A switch that starts/stops the addon's detection worker."""
 
     def __init__(self, coordinator, entry):
         """Initialize the switch."""
         super().__init__(coordinator)
         self._entry = entry
-        self._attr_name = "Obico ML Communication"
+        self._attr_name = "Obico ML Detection"
         self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_api_communication"
 
     @property
     def is_on(self) -> bool:
-        """Return the state of the switch."""
-        return self.coordinator.api_enabled
+        """Return True while the addon's camera worker is running."""
+        if self.coordinator.data is None:
+            return False
+        return bool(self.coordinator.data.get("running"))
 
     async def async_turn_on(self, **kwargs) -> None:
-        """Turn the API communication on."""
-        self.coordinator.api_enabled = True
-        await self.coordinator.async_request_refresh()
+        """Start detection on the addon."""
+        await self.coordinator.async_set_running(True)
 
     async def async_turn_off(self, **kwargs) -> None:
-        """Turn the API communication off."""
-        self.coordinator.api_enabled = False
-        await self.coordinator.async_request_refresh()
+        """Stop detection on the addon."""
+        await self.coordinator.async_set_running(False)

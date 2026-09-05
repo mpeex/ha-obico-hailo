@@ -75,6 +75,7 @@ cam_state = {
     "last_detections": [],
     "last_avg_confidence": 0.0,
     "last_update": None,
+    "last_image": None,
 }
 _cam_lock = threading.Lock()
 _stop_event = threading.Event()
@@ -130,6 +131,10 @@ def _camera_worker():
                 detections = _rate_limiter.run(
                     lambda: detect(net_main, img, thresh=threshold)
                 )
+                img_with_boxes = draw_bounding_boxes(img, detections)
+                _, buffer = cv2.imencode('.jpg', img_with_boxes)
+                with _cam_lock:
+                    cam_state["last_image"] = buffer.tobytes()
                 _publish_result(detections)
                 with _cam_lock:
                     cam_state["last_error"] = None
@@ -157,6 +162,17 @@ net_main = load_net(path.join(model_dir, 'model.cfg'), path.join(model_dir, 'mod
 # One shared limiter per worker. With gunicorn --workers 1 this is a single
 # process-wide throttle; the budget is global to the Hailo device.
 _rate_limiter = FrameRateLimiter(MAX_FPS)
+
+
+def _auto_start_worker():
+    """Start the camera worker on boot when auto_start is enabled and a
+    camera is configured, so detection resumes without clicking Start in the
+    web UI."""
+    cfg = load_config()
+    if cfg.get("auto_start") and cfg.get("camera_entity"):
+        _stop_event.clear()
+        _ensure_camera_worker_started()
+
 
 def draw_bounding_boxes(image, detections):
     for detection in detections:
@@ -241,13 +257,24 @@ def api_config():
 @app.route('/status', methods=['GET'])
 def api_status():
     with _cam_lock:
-        snap = dict(cam_state)
+        snap = {k: v for k, v in cam_state.items() if k != "last_image"}
     return jsonify({
         "ok": True,
         "config": load_config(),
         "ha_connected": ha_lib.ha_available(),
         "state": snap,
     })
+
+
+@app.route('/last_image', methods=['GET'])
+def api_last_image():
+    with _cam_lock:
+        img = cam_state.get("last_image")
+    if not img:
+        return jsonify({"error": "No image available yet"}), 404
+    resp = flask.Response(img, mimetype='image/jpeg')
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 
 @app.route('/api/start', methods=['POST'])
@@ -308,6 +335,8 @@ _UI_PAGE = """<!DOCTYPE html>
   <label for="threshold">Threshold (0–1)</label>
   <input id="threshold" type="number" step="0.01" min="0" max="1" value="{{ config.threshold }}" />
 
+  <label><input id="auto_start" type="checkbox" {% if config.auto_start %}checked{% endif %} /> Auto-start detection on boot</label>
+
   <button class="btn btn-start" id="start">Start detection</button>
   <button class="btn btn-stop" id="stop">Stop</button>
 
@@ -318,7 +347,8 @@ const msg = el => { const d = document.getElementById('msg'); d.className='msg '
   d.innerHTML = el.ok ? (el.detail||'Saved.') : ('Error: '+(el.error||'unknown')); };
 function cfg(){return {camera_entity:document.getElementById('camera').value,
   interval:parseInt(document.getElementById('interval').value)||10,
-  threshold:parseFloat(document.getElementById('threshold').value)||0.2};}
+  threshold:parseFloat(document.getElementById('threshold').value)||0.2,
+  auto_start:document.getElementById('auto_start').checked};}
 document.getElementById('start').onclick = async () => {
   const r = await fetch('api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg())});
   msg(await r.json());
@@ -331,6 +361,9 @@ document.getElementById('stop').onclick = async () => {
 </body>
 </html>
 """
+
+# Auto-start the camera worker at server boot (gunicorn imports this module).
+_auto_start_worker()
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=3333, threaded=False)

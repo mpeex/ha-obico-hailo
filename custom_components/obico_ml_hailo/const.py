@@ -1,7 +1,7 @@
 DOMAIN = "obico_ml_hailo"
 PLATFORMS = ["binary_sensor", "switch", "camera", "sensor"]
 DEFAULT_NAME = "Obico ML (Hailo)"
-DEFAULT_URL = "http://obico_ml_hailo:3333/detect/"
+DEFAULT_URL = "http://core-obico_ml_hailo:3333"
 DEFAULT_INTERVAL = 10  # in seconds
 DEFAULT_THRESHOLD = 0.2
 

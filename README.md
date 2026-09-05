@@ -149,18 +149,21 @@ integration** shipped in `custom_components/obico_ml_hailo/`:
 2. Restart Home Assistant (Settings → System → Restart).
 3. Settings → Devices & Services → **Add Integration** → search *Obico ML (Hailo)*.
 4. Configure:
-   - **URL** → `http://obico_ml_hailo:3333/detect/` (the addon's internal
-     endpoint, default).
-   - **Camera entity** → the same `camera.*` entity the addon uses.
+   - **URL** → `http://core-obico_ml_hailo:3333` (the addon reached from HA
+     core; the addon's own hostname is not resolvable on HA's network).
+   - **Camera entity** → the `camera.*` entity the addon uses.
    - **Interval** / **Threshold** → mirror the addon options (`10` / `0.2`).
 
-The integration polls the addon's detection API and exposes:
+The integration mirrors the addon's camera worker — it does **not** touch the
+camera or the Hailo itself (the addon's own worker does the frame capture and
+inference; start it from the addon web UI, enable *auto-start* in the addon
+options, or flip the detection switch below). It exposes:
 
 - `binary_sensor.obico_failure` (device class `problem`) → `on` when the model
   finds a failure, with `detections` / `avg_confidence` / `camera` attributes
 - `sensor.obico_confidence` → average confidence (%), unit `%`
-- `camera.obico_ml_detection_camera` → the annotated frame
-- `switch.obico_ml_communication` → pause/resume polling
+- `camera.obico_ml_detection_camera` → the annotated frame from the addon
+- `switch.obico_ml_detection` → start/stop the addon's detection worker
 
 > The addon's own REST-published states (`binary_sensor.obico_failure`,
 > `sensor.obico_confidence`) are kept as a fallback that works **without** any

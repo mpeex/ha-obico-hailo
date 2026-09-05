@@ -19,6 +19,7 @@ DEFAULTS = {
     "camera_entity": "",
     "interval": 10,
     "threshold": 0.2,
+    "auto_start": False,
 }
 
 _lock = threading.Lock()
@@ -33,23 +34,12 @@ def _data_dir_available():
 
 
 def load_config():
-    """Return the current config dict (persisted or env override merged)."""
+    """Return the current config dict (persisted or env override merged).
+
+    The persisted JSON file is the baseline; addon options exported by the s6
+    run script as environment variables override it per-key.
+    """
     cfg = dict(DEFAULTS)
-    # Environment overrides take precedence (set by the s6 run script).
-    if os.environ.get("CAMERA_ENTITY", ""):
-        cfg["camera_entity"] = os.environ["CAMERA_ENTITY"]
-    if os.environ.get("INTERVAL", ""):
-        try:
-            cfg["interval"] = int(os.environ["INTERVAL"])
-        except ValueError:
-            pass
-    if os.environ.get("THRESHOLD", ""):
-        try:
-            cfg["threshold"] = float(os.environ["THRESHOLD"])
-        except ValueError:
-            pass
-    if os.environ.get("CAMERA_ENTITY", "") or os.environ.get("INTERVAL") or os.environ.get("THRESHOLD"):
-        return cfg
 
     with _lock:
         if _data_dir_available():
@@ -57,14 +47,26 @@ def load_config():
                 with open(CONFIG_FILE, "r") as fh:
                     stored = json.load(fh)
                 cfg.update({k: stored[k] for k in cfg if k in stored})
-                return cfg
             except FileNotFoundError:
                 pass
             except Exception as err:
                 _LOGGER.warning("Failed to read config file: %s", err)
         else:
             cfg.update(_memory)
-        return cfg
+
+    # Environment overrides take precedence (set by the s6 run script).
+    if os.environ.get("CAMERA_ENTITY", ""):
+        cfg["camera_entity"] = os.environ["CAMERA_ENTITY"]
+    for key in ("interval", "threshold"):
+        env = os.environ.get(key.upper(), "")
+        if env:
+            try:
+                cfg[key] = (int if key == "interval" else float)(env)
+            except ValueError:
+                pass
+    if os.environ.get("AUTO_START", "") not in ("", None):
+        cfg["auto_start"] = os.environ["AUTO_START"].lower() in ("1", "true", "yes")
+    return cfg
 
 
 def save_config(partial):

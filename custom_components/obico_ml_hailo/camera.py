@@ -12,7 +12,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class ObicoCamera(CoordinatorEntity, Camera):
-    """Representation of a camera entity showing error detections."""
+    """Camera entity showing the addon's latest annotated frame."""
 
     def __init__(self, coordinator, entry):
         """Initialize the camera entity."""
@@ -25,17 +25,13 @@ class ObicoCamera(CoordinatorEntity, Camera):
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
-        """Return the latest image with error detections."""
-        data = self.coordinator.data
-        if data is None:
-            return None
-        return data.get("image_with_errors")
+        """Return the latest annotated frame from the addon."""
+        return await self.coordinator.async_fetch_last_image()
 
     @property
     def available(self) -> bool:
-        """Return if the camera is available."""
+        """Available while the addon reports detections/frames."""
         return (
             self.coordinator.last_update_success
             and self.coordinator.data is not None
-            and self.coordinator.data.get("image_with_errors") is not None
         )
