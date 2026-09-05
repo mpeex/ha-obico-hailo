@@ -15,8 +15,8 @@
 # ---------------------------------------------------------------------------
 # HailoRT provisioning params (used with the stock python base below)
 # ---------------------------------------------------------------------------
-ARG HAILORT_VERSION=4.20.0
-ARG HAILORT_RELEASE=2025_01
+ARG HAILORT_VERSION=4.21.0
+ARG HAILORT_RELEASE=2025_04
 ARG HAILORT_BASE_URL=https://dev-public.hailo.ai/${HAILORT_RELEASE}
 ARG HAILORT_WHEEL_TAG=cp311-cp311-linux_aarch64
 
@@ -51,7 +51,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 #   libgomp1            OpenMP runtime required by ONNX Runtime
 #   libglib2.0-0        shared lib required by opencv-python-headless
 #   libssl3 libudev1    HailoRT runtime libs
-#   gcc python3-dev     to build netifaces (hailort 4.20 runtime dep)
+#   gcc python3-dev     to build netifaces (hailort 4.21 runtime dep)
 # ---------------------------------------------------------------------------
 RUN apt-get update \
     && apt-get install --no-install-recommends --assume-yes \
@@ -64,8 +64,8 @@ RUN apt-get update \
 COPY hailo_assets/ /hailo_assets_local/
 
 # Re-declare the HailoRT ARGs after the FROM (they are build-scoped).
-ARG HAILORT_VERSION=4.20.0
-ARG HAILORT_RELEASE=2025_01
+ARG HAILORT_VERSION=4.21.0
+ARG HAILORT_RELEASE=2025_04
 ARG HAILORT_BASE_URL=https://dev-public.hailo.ai/${HAILORT_RELEASE}
 ARG HAILORT_WHEEL_TAG=cp311-cp311-linux_aarch64
 
@@ -96,6 +96,11 @@ RUN pip install --no-cache-dir --upgrade pip \
         onnxruntime==1.29.0 \
         opencv-python-headless==4.11.0.86 \
         "${HAILORT_WHEEL}"
+
+# Ship the HailoRT redistribution licenses with the binaries (required to
+# redistribute HailoRT): MIT (libhailort, pyhailort, hailortcli) and
+# LGPL-2.1-or-later (hailonet GStreamer plugin).
+COPY hailo_assets/licenses/ /usr/share/licenses/hailort/
 
 # ---------------------------------------------------------------------------
 # Home Assistant Community Add-on base (s6-overlay + bashio + tempio)

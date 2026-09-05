@@ -53,6 +53,7 @@ Both HEF sets ship in `app/model/` and are committed via Git LFS (`*.hef`).
 | `app/server.py` | Flask app: camera-selection web UI + background detection worker |
 | `rootfs/` | s6 service lifecycle (exports config options as env vars) |
 | `hailo_assets/` | optional offline HailoRT binaries (`hailort_<V>_arm64.deb` + wheel) |
+| `hailo_assets/licenses/` | HailoRT redistribution licenses (MIT + LGPL-2.1), shipped inside the image |
 
 ## Build
 
@@ -65,8 +66,13 @@ HailoRT provisioning reads `hailo_assets/`:
 - if `hailort_<V>_arm64.deb` and the matching
   `hailort-<V>-cp311-cp311-linux_aarch64.whl` are present → **offline** build;
 - if they are absent → the HailoRT binaries are **downloaded** from
-  `https://dev-public.hailo.ai/2025_01/` at build time (online), then cached in
+  `https://dev-public.hailo.ai/2025_04/` at build time (online), then cached in
   `hailo_assets/` for next time.
+
+HailoRT is redistributed inside the image under its own terms; the required
+license texts (MIT for libhailort/pyhailort/hailortcli, LGPL-2.1-or-later for
+the hailonet GStreamer plugin) live in `hailo_assets/licenses/` and are copied
+to `/usr/share/licenses/hailort/` in the final image.
 
 ```bash
 # Direct build (any arm64 host):
@@ -124,7 +130,33 @@ The background worker runs in a daemon thread; its current state is available at
 shared Hailo: surplus requests reuse the previous frame's detections instead of
 running inference, leaving the accelerator free for other consumers.
 
+## Publish to GHCR
+
+Build and push the image manually (e.g. from the RPi5):
+
+```bash
+# Build on an arm64 host
+docker build --build-arg BUILD_ARCH=aarch64 -t obico-ml-hailo:4.21 .
+
+# Optionally use the offline HailoRT assets instead of downloading at build time
+cp hailo_assets/hailort_4.21.0_arm64.deb hailo_assets/hailort-4.21.0-cp311-cp311-linux_aarch64.whl .
+docker build --build-arg BUILD_ARCH=aarch64 -t obico-ml-hailo:4.21 .
+
+# Tag and push
+docker tag obico-ml-hailo:4.21 ghcr.io/mpeex/obico-ha-app:4.21
+docker tag obico-ml-hailo:4.21 ghcr.io/mpeex/obico-ha-app:latest
+docker push ghcr.io/mpeex/obico-ha-app:4.21
+docker push ghcr.io/mpeex/obico-ha-app:latest
+```
+
+(Requires `docker login ghcr.io` with a token that has `write:packages`.) The
+tag tracks the HailoRT version (`4.21`); `config.yaml` is left untouched.
+
 ## License
 
 AGPL-3.0. Based on https://github.com/TheSpaghettiDetective/obico-server
 (Hailo runtime) and https://github.com/nobodyguy/obico_ml_ha_addon (addon structure).
+
+The redistributed HailoRT binaries keep their own licenses (MIT and
+LGPL-2.1-or-later); the texts ship in `hailo_assets/licenses/` and inside the
+image under `/usr/share/licenses/hailort/`.

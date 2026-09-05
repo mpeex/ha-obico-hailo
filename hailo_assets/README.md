@@ -10,10 +10,10 @@ Questa cartella contiene i binari HailoRT in modo da poter costruire l'addon
 | Librerie runtime (`.deb`) | `hailort_${HAILORT_VERSION}_arm64.deb` |
 | Binding Python (`.whl`)   | `hailort-${HAILORT_VERSION}-${PY_TAG}-${ARCH_TAG}.whl` |
 
-Esempio (HailoRT 4.20.0 su Python 3.11 / aarch64):
+Esempio (HailoRT 4.21.0 su Python 3.11 / aarch64):
 
-- `hailort_4.20.0_arm64.deb`
-- `hailort-4.20.0-cp311-cp311-linux_aarch64.whl`
+- `hailort_4.21.0_arm64.deb`
+- `hailort-4.21.0-cp311-cp311-linux_aarch64.whl`
 
 ## Comportamento della build
 
@@ -28,4 +28,16 @@ versione richiesta (`HAILORT_VERSION`, rilevata dal runtime host via
 
 Questa cartella resta quasi sempre vuota a meno che non si voglia garantire una
 build offline. I binari sono grandi e **non** vanno committati (sono in
-`.gitignore`).
+`.gitignore`): vengono distribuiti **solo all'interno della docker image**.
+
+## Licenze di redistribuzione
+
+La redistribuzione dei binari HailoRT è consentita e richiede di includere le
+relative licenze:
+
+- `licenses/LICENSE-HailoRT-MIT.txt` — per libhailort, pyhailort e hailortcli (MIT);
+- `licenses/LICENSE-HailoRT-LGPL-2.1.txt` — per il plugin GStreamer hailonet (LGPL-2.1-or-later).
+
+Copie dei testi ufficiali dal repository [hailo-ai/hailort](https://github.com/hailo-ai/hailort)
+(branch `hailo8`). Il `Dockerfile` le copia dentro l'immagine in
+`/usr/share/licenses/hailort/`.
