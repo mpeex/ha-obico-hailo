@@ -1,6 +1,4 @@
 {
   "name": "Obico ML (Hailo)",
-  "content_in_root": true,
-  "zip_release": false,
   "hide_default_branch": false
 }
