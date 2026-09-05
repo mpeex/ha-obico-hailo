@@ -1,5 +1,5 @@
 name: Obico ML (Hailo)
-version: "0.5"
+version: "0.7"
 slug: obico_ml_hailo
 description: >-
   Home Assistant addon for Obico ML-based spaghetti/failure detection on a

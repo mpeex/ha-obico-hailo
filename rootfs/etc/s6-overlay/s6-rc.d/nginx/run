@@ -7,4 +7,9 @@
 
 bashio::log.info 'Starting HA Ingress reverse proxy (nginx)...'
 
+# The Debian default nginx.conf logs to /var/log/nginx/error.log; the minimal
+# image does not ship that directory (and the Dockerfile purge removes it), so
+# create it here before starting.
+mkdir -p /var/log/nginx
+
 exec nginx -g 'daemon off;'
