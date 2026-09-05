@@ -94,14 +94,25 @@ def ha_request(method, path, **kwargs):
 
 
 def list_cameras():
-    """Return a sorted list of active camera.* entity ids."""
+    """Return a sorted list of camera.* entity ids.
+
+    Includes all camera.* entities, regardless of state, so that the UI
+    dropdown can populate even when cameras report 'unavailable'/'unknown'
+    during startup.  Diagnostic logging helps spot filtering issues in
+    future runs.
+    """
     states = ha_request("GET", "/api/states").json()
-    return sorted(
+    cameras = sorted(
         s["entity_id"]
         for s in states
         if s["entity_id"].startswith("camera.")
-        and s.get("state") not in (None, "", "unavailable", "unknown")
     )
+    _LOGGER.debug(
+        "list_cameras: %d camera.* entities found: %s",
+        len(cameras),
+        cameras,
+    )
+    return cameras
 
 
 def camera_entity_picture(camera_entity):
