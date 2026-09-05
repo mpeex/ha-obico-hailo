@@ -12,6 +12,7 @@ entities without depending on a companion integration.
 
 import logging
 import os
+import time
 
 import requests
 
@@ -93,18 +94,87 @@ def camera_entity_picture(camera_entity):
 
 
 def fetch_camera_image(camera_entity):
-    """Return the raw JPEG bytes of `camera_entity`'s current snapshot."""
+    """Return the raw JPEG bytes of `camera_entity`'s current snapshot.
+
+    Strategy (in order):
+      1. HA camera_proxy snapshot (from the entity's attribute). Cheap and
+         works for most cameras, but some (e.g. Bambu Lab P1/S1) return 500
+         when HA cannot produce a still on demand.
+      2. The camera's stream source (REST camera.get_stream_source): open the
+         RTSP/HLS URL and grab one frame with OpenCV. Works for cameras whose
+         still endpoint is unreliable, as long as we have LAN access to the
+         stream.
+    """
     pic = camera_entity_picture(camera_entity)
-    if not pic:
-        raise RuntimeError(
-            f"Camera {camera_entity} does not provide an image URL"
+    if pic:
+        token = supervisor_token()
+        last_err = None
+        for attempt in (1, 2, 3):
+            try:
+                resp = requests.get(
+                    pic, headers={"Authorization": f"Bearer {token}"}, timeout=10
+                )
+                resp.raise_for_status()
+                _LOGGER.debug("camera_proxy snapshot OK (%d bytes)", len(resp.content))
+                return resp.content
+            except Exception as err:
+                last_err = err
+                _LOGGER.warning(
+                    "camera_proxy snapshot attempt %d failed: %s", attempt, err
+                )
+                time.sleep(1.0)
+        _LOGGER.warning(
+            "camera_proxy snapshot failed (%s); falling back to stream source",
+            last_err,
         )
-    token = supervisor_token()
-    resp = requests.get(
-        pic, headers={"Authorization": f"Bearer {token}"}, timeout=15
+
+    url = get_stream_source(camera_entity)
+    if url:
+        return _grab_stream_frame(url)
+
+    raise RuntimeError(
+        f"Camera {camera_entity} provides neither a snapshot nor a stream source"
     )
-    resp.raise_for_status()
-    return resp.content
+
+
+def get_stream_source(camera_entity):
+    """Return the camera's stream URL (RTSP/HLS), or None."""
+    try:
+        resp = ha_request(
+            "POST",
+            "api/services/camera/get_stream_source",
+            json={"entity_id": camera_entity},
+        )
+        result = resp.json().get("result")
+        if result:
+            _LOGGER.debug("stream source for %s: %s", camera_entity, result)
+        return result or None
+    except Exception as err:
+        _LOGGER.warning("get_stream_source failed for %s: %s", camera_entity, err)
+        return None
+
+
+def _grab_stream_frame(url):
+    """Open a stream URL and return the first decoded frame as JPEG bytes."""
+    import cv2
+    import numpy as np
+
+    cap = cv2.VideoCapture(url)
+    try:
+        frame = None
+        for _ in range(20):
+            ok, frame = cap.read()
+            if ok and frame is not None:
+                break
+            time.sleep(0.2)
+        if frame is None:
+            raise RuntimeError(f"no frame decoded from {url}")
+        ok, buf = cv2.imencode(".jpg", frame)
+        if not ok:
+            raise RuntimeError("JPEG encode failed")
+        return np.asarray(buf).tobytes()
+    finally:
+        cap.release()
 
 
 def set_state(entity_id, state, attributes=None):
