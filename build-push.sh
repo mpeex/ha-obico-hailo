@@ -6,8 +6,11 @@
 # Docker buildx. On non-native hosts buildx boots a QEMU-backed builder.
 #
 # Usage:
-#   ./build-push.sh               # linux/arm64, tag 4.21
-#   ./build-push.sh 4.21 linux/amd64
+#   ./build-push.sh               # linux/arm64, tag 0.1
+#   ./build-push.sh 0.1 linux/amd64
+#
+# The image is named after the addon image from config.yaml, with {arch}
+# replaced by the target arch (ghcr.io/mpeex/obico_ml_hailo_addon-aarch64:0.1).
 #
 # Prerequisites:
 #   - docker with buildx (Docker Desktop / buildx plugin)
@@ -15,7 +18,7 @@
 # ==============================================================================
 set -euo pipefail
 
-TAG="${1:-4.21}"
+TAG="${1:-0.1}"
 PLATFORM="${2:-linux/arm64}"
 
 case "${PLATFORM}" in
@@ -24,7 +27,7 @@ case "${PLATFORM}" in
   *) echo "Unsupported platform: ${PLATFORM}"; exit 1 ;;
 esac
 
-REPO="ghcr.io/mpeex/obico-ha-app"
+REPO="ghcr.io/mpeex/obico_ml_hailo_addon-${BUILD_ARCH}"
 IMAGE="${REPO}:${TAG}"
 
 echo "► Building ${IMAGE} for ${PLATFORM} (BUILD_ARCH=${BUILD_ARCH})"
