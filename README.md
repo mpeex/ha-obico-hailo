@@ -126,5 +126,5 @@ running inference, leaving the accelerator free for other consumers.
 
 ## License
 
-MIT. Based on https://github.com/TheSpaghettiDetective/obico-server
+AGPL-3.0. Based on https://github.com/TheSpaghettiDetective/obico-server
 (Hailo runtime) and https://github.com/nobodyguy/obico_ml_ha_addon (addon structure).

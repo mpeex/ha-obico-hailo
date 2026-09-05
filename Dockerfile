@@ -190,7 +190,7 @@ LABEL \
     org.opencontainers.image.description="Home Assistant Add-on: Obico ML failure detection on Hailo 8/8L" \
     org.opencontainers.image.vendor="mpeex" \
     org.opencontainers.image.authors="mpeex" \
-    org.opencontainers.image.licenses="MIT" \
+    org.opencontainers.image.licenses="AGPL-3.0" \
     org.opencontainers.image.url="https://github.com/mpeex/spaghetti-rpi5-aikit" \
     org.opencontainers.image.source="https://github.com/mpeex/spaghetti-rpi5-aikit" \
     org.opencontainers.image.documentation="https://github.com/mpeex/spaghetti-rpi5-aikit/blob/main/README.md" \
