@@ -1,5 +1,5 @@
 name: Obico ML (Hailo)
-version: "0.8"
+version: "0.9"
 slug: obico_ml_hailo
 description: >-
   Home Assistant addon for Obico ML-based spaghetti/failure detection on a
@@ -30,3 +30,10 @@ schema:
   auto_start: bool
 homeassistant_api: true
 ingress: true
+ports:
+  3333/tcp: "172.30.32.1:3333"
+ports_description:
+  3333/tcp: >-
+    API port, bound only to the Supervisor network gateway so Home Assistant
+    core can reach the addon without DNS (http://172.30.32.1:3333). Not exposed
+    to the LAN.

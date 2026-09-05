@@ -149,8 +149,9 @@ integration** shipped in `custom_components/obico_ml_hailo/`:
 2. Restart Home Assistant (Settings → System → Restart).
 3. Settings → Devices & Services → **Add Integration** → search *Obico ML (Hailo)*.
 4. Configure:
-   - **URL** → `http://core-obico_ml_hailo:3333` (the addon reached from HA
-     core; the addon's own hostname is not resolvable on HA's network).
+   - **URL** → `http://172.30.32.1:3333` (the addon's API port, published on the
+     Supervisor network gateway so HA core reaches it without DNS; the addon's
+     own hostname is not resolvable from HA core).
    - **Camera entity** → the `camera.*` entity the addon uses.
    - **Interval** / **Threshold** → mirror the addon options (`10` / `0.2`).
 
