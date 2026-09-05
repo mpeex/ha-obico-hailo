@@ -10,7 +10,9 @@
 #
 # HailoRT is provisioned from hailo_assets/ (offline) or downloaded from
 # https://dev-public.hailo.ai/<RELEASE>/ at build time if the binaries are
-# missing. See hailo_assets/README.md.
+# missing. The file names are derived from BUILD_ARCH: aarch64 → arm64.deb +
+# linux_aarch64 wheel, amd64 → amd64.deb + linux_x86_64 wheel. See
+# hailo_assets/README.md.
 
 # ---------------------------------------------------------------------------
 # HailoRT provisioning params (used with the stock python base below)
@@ -18,7 +20,6 @@
 ARG HAILORT_VERSION=4.21.0
 ARG HAILORT_RELEASE=2025_04
 ARG HAILORT_BASE_URL=https://dev-public.hailo.ai/${HAILORT_RELEASE}
-ARG HAILORT_WHEEL_TAG=cp311-cp311-linux_aarch64
 
 # HA addon machinery versions / base
 ARG BUILD_FROM=python:3.11-slim-bookworm
@@ -67,17 +68,19 @@ COPY hailo_assets/ /hailo_assets_local/
 ARG HAILORT_VERSION=4.21.0
 ARG HAILORT_RELEASE=2025_04
 ARG HAILORT_BASE_URL=https://dev-public.hailo.ai/${HAILORT_RELEASE}
-ARG HAILORT_WHEEL_TAG=cp311-cp311-linux_aarch64
+ARG BUILD_ARCH=aarch64
 
 # Install HailoRT runtime (.deb → lib/usr/bin) — offline from hailo_assets/ if
 # present, otherwise downloaded from the public Hailo release server.
 RUN \
-    if [ -f "/hailo_assets_local/hailort_${HAILORT_VERSION}_arm64.deb" ]; then \
-         HAILORT_DEB="/hailo_assets_local/hailort_${HAILORT_VERSION}_arm64.deb"; \
+    HAILORT_DEB_ARCH="arm64" \
+    && if [ "${BUILD_ARCH}" = "amd64" ]; then HAILORT_DEB_ARCH="amd64"; fi \
+    && if [ -f "/hailo_assets_local/hailort_${HAILORT_VERSION}_${HAILORT_DEB_ARCH}.deb" ]; then \
+         HAILORT_DEB="/hailo_assets_local/hailort_${HAILORT_VERSION}_${HAILORT_DEB_ARCH}.deb"; \
        else \
          curl --fail --silent --show-error --location \
            --output /tmp/hailort.deb \
-           "${HAILORT_BASE_URL}/hailort_${HAILORT_VERSION}_arm64.deb"; \
+           "${HAILORT_BASE_URL}/hailort_${HAILORT_VERSION}_${HAILORT_DEB_ARCH}.deb"; \
          HAILORT_DEB="/tmp/hailort.deb"; \
        fi \
     && dpkg-deb -x "${HAILORT_DEB}" /tmp/hailort \
@@ -87,6 +90,8 @@ RUN \
 
 # Install HailoRT python bindings + ONNX Runtime + OpenCV headless.
 RUN pip install --no-cache-dir --upgrade pip \
+    && HAILORT_WHEEL_TAG="cp311-cp311-linux_aarch64" \
+    && if [ "${BUILD_ARCH}" = "amd64" ]; then HAILORT_WHEEL_TAG="cp311-cp311-linux_x86_64"; fi \
     && if [ -f "/hailo_assets_local/hailort-${HAILORT_VERSION}-${HAILORT_WHEEL_TAG}.whl" ]; then \
          HAILORT_WHEEL="/hailo_assets_local/hailort-${HAILORT_VERSION}-${HAILORT_WHEEL_TAG}.whl"; \
        else \

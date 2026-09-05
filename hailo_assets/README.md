@@ -5,21 +5,22 @@ Questa cartella contiene i binari HailoRT in modo da poter costruire l'addon
 
 ## Convenzione di naming
 
-| Tipo | Nome atteso |
-|------|-------------|
-| Librerie runtime (`.deb`) | `hailort_${HAILORT_VERSION}_arm64.deb` |
-| Binding Python (`.whl`)   | `hailort-${HAILORT_VERSION}-${PY_TAG}-${ARCH_TAG}.whl` |
+I nomi dipendono da `BUILD_ARCH`, riepilogato dal `Dockerfile`:
 
-Esempio (HailoRT 4.21.0 su Python 3.11 / aarch64):
+| Arch        | `.deb`                            | `.whl`                                 |
+|-------------|-----------------------------------|----------------------------------------|
+| `aarch64`   | `hailort_${HAILORT_VERSION}_arm64.deb` | `hailort-${HAILORT_VERSION}-cp311-cp311-linux_aarch64.whl` |
+| `amd64`     | `hailort_${HAILORT_VERSION}_amd64.deb` | `hailort-${HAILORT_VERSION}-cp311-cp311-linux_x86_64.whl`  |
 
-- `hailort_4.21.0_arm64.deb`
-- `hailort-4.21.0-cp311-cp311-linux_aarch64.whl`
+Esempi (HailoRT 4.21.0 su Python 3.11):
+
+- aarch64: `hailort_4.21.0_arm64.deb`, `hailort-4.21.0-cp311-cp311-linux_aarch64.whl`
+- amd64: `hailort_4.21.0_amd64.deb`, `hailort-4.21.0-cp311-cp311-linux_x86_64.whl`
 
 ## Comportamento della build
 
-Il `Dockerfile` (unico, self-contained) cerca in questa cartella i binari con la
-versione richiesta (`HAILORT_VERSION`, rilevata dal runtime host via
-`hailortcli`):
+Il `Dockerfile` (unico, self-contained) cerca in questa cartella i binari che
+corrispondono a `BUILD_ARCH` e alla versione richiesta (`HAILORT_VERSION`):
 
 - **se sono presenti** → la build li usa direttamente (nessun download, build offline);
 - **se sono assenti** → la build li scarica da

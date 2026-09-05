@@ -52,7 +52,7 @@ Both HEF sets ship in `app/model/` and are committed via Git LFS (`*.hef`).
 | `app/model/` | `obico_part*.hef`, `decode.onnx`, `model.meta`, `names` |
 | `app/server.py` | Flask app: camera-selection web UI + background detection worker |
 | `rootfs/` | s6 service lifecycle (exports config options as env vars) |
-| `hailo_assets/` | optional offline HailoRT binaries (`hailort_<V>_arm64.deb` + wheel) |
+| `hailo_assets/` | optional offline HailoRT binaries (`hailort_<V>_<arch>.deb` + wheel, arch derived from `BUILD_ARCH`) |
 | `hailo_assets/licenses/` | HailoRT redistribution licenses (MIT + LGPL-2.1), shipped inside the image |
 
 ## Build
@@ -61,10 +61,15 @@ The addon is built with a **single Dockerfile** that starts from a stock
 `python:3.11-slim-bookworm` and provisions HailoRT, ONNX Runtime and OpenCV
 headless itself. No separate base image or registry push is needed.
 
-HailoRT provisioning reads `hailo_assets/`:
+HailoRT provisioning reads `hailo_assets/`. The expected file names depend on
+`BUILD_ARCH`:
 
-- if `hailort_<V>_arm64.deb` and the matching
-  `hailort-<V>-cp311-cp311-linux_aarch64.whl` are present → **offline** build;
+| `BUILD_ARCH` | `.deb` | `.whl` |
+|--------------|--------|--------|
+| `aarch64` | `hailort_<V>_arm64.deb` | `hailort-<V>-cp311-cp311-linux_aarch64.whl` |
+| `amd64` | `hailort_<V>_amd64.deb` | `hailort-<V>-cp311-cp311-linux_x86_64.whl` |
+
+- if the matching files are present → **offline** build;
 - if they are absent → the HailoRT binaries are **downloaded** from
   `https://dev-public.hailo.ai/2025_04/` at build time (online), then cached in
   `hailo_assets/` for next time.
@@ -77,6 +82,9 @@ to `/usr/share/licenses/hailort/` in the final image.
 ```bash
 # Direct build (any arm64 host):
 docker build --build-arg BUILD_ARCH=aarch64 -t obico-ml-hailo .
+
+# Direct build on x86_64:
+docker build --build-arg BUILD_ARCH=amd64 -t obico-ml-hailo .
 ```
 
 ## Build & install (local addon on HAOS RPi5)
@@ -135,18 +143,42 @@ running inference, leaving the accelerator free for other consumers.
 Build and push the image manually (e.g. from the RPi5):
 
 ```bash
-# Build on an arm64 host
-docker build --build-arg BUILD_ARCH=aarch64 -t obico-ml-hailo:4.21 .
+# Build on the target host. Set BUILD_ARCH to aarch64 (arm64 host) or amd64
+# (x86_64 host); the matching HailoRT .deb/.whl names are derived automatically.
+docker build --build-arg BUILD_ARCH=aarch64 -t obico-ml-hailo:4.21 .   # arm64 host
+docker build --build-arg BUILD_ARCH=amd64 -t obico-ml-hailo:4.21 .    # x86_64 host
 
-# Optionally use the offline HailoRT assets instead of downloading at build time
-cp hailo_assets/hailort_4.21.0_arm64.deb hailo_assets/hailort-4.21.0-cp311-cp311-linux_aarch64.whl .
-docker build --build-arg BUILD_ARCH=aarch64 -t obico-ml-hailo:4.21 .
+# Offline build: drop the 4.21.0 .deb/.whl matching your arch into hailo_assets/
+# first (they are gitignored); the build uses them instead of downloading.
+#   aarch64 → hailort_4.21.0_arm64.deb + hailort-4.21.0-cp311-cp311-linux_aarch64.whl
+#   amd64   → hailort_4.21.0_amd64.deb + hailort-4.21.0-cp311-cp311-linux_x86_64.whl
 
 # Tag and push
 docker tag obico-ml-hailo:4.21 ghcr.io/mpeex/obico-ha-app:4.21
 docker tag obico-ml-hailo:4.21 ghcr.io/mpeex/obico-ha-app:latest
 docker push ghcr.io/mpeex/obico-ha-app:4.21
 docker push ghcr.io/mpeex/obico-ha-app:latest
+```
+
+For a multi-arch manifest, build and push once per arch, tagging each result
+with an arch-specific tag, then combine:
+
+```bash
+# arm64 host
+docker build --build-arg BUILD_ARCH=aarch64 -t obico-ml-hailo:4.21 .
+docker tag obico-ml-hailo:4.21 ghcr.io/mpeex/obico-ha-app:4.21-arm64
+docker push ghcr.io/mpeex/obico-ha-app:4.21-arm64
+
+# x86_64 host
+docker build --build-arg BUILD_ARCH=amd64 -t obico-ml-hailo:4.21 .
+docker tag obico-ml-hailo:4.21 ghcr.io/mpeex/obico-ha-app:4.21-amd64
+docker push ghcr.io/mpeex/obico-ha-app:4.21-amd64
+
+# any host
+docker manifest create ghcr.io/mpeex/obico-ha-app:4.21 \
+  ghcr.io/mpeex/obico-ha-app:4.21-arm64 \
+  ghcr.io/mpeex/obico-ha-app:4.21-amd64
+docker manifest push ghcr.io/mpeex/obico-ha-app:4.21
 ```
 
 (Requires `docker login ghcr.io` with a token that has `write:packages`.) The
