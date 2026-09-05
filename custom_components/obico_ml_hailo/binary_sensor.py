@@ -16,23 +16,21 @@ class ObicoBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     def __init__(self, coordinator, entry):
         """Initialize the binary sensor entity."""
-        CoordinatorEntity.__init__(self, coordinator)
-        BinarySensorEntity.__init__(self)
-        self.coordinator = coordinator
+        super().__init__(coordinator)
         self._entry = entry
         self._attr_name = "Obico ML Failure Detected"
         self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_error_detection"
-        self._attr_is_on = False
+        self._attr_device_class = "problem"
 
     @property
     def is_on(self) -> bool:
         """Return True if an error was detected."""
-        if self.coordinator.api_enabled:
-            return self.coordinator.data.get(ATTR_ERROR_DETECTED, False)
-
-        return False
+        data = self.coordinator.data
+        if data is None:
+            return False
+        return bool(data.get(ATTR_ERROR_DETECTED, False))
 
     @property
     def available(self) -> bool:
         """Return True if the coordinator's last update was successful."""
-        return self.coordinator.last_update_success
+        return self.coordinator.last_update_success and self.coordinator.data is not None

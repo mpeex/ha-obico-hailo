@@ -16,27 +16,22 @@ class ObicoSwitch(CoordinatorEntity, SwitchEntity):
 
     def __init__(self, coordinator, entry):
         """Initialize the switch."""
-        CoordinatorEntity.__init__(self, coordinator)
-        SwitchEntity.__init__(self)
+        super().__init__(coordinator)
         self._entry = entry
         self._attr_name = "Obico ML Communication"
         self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_api_communication"
-        self._is_on = coordinator.api_enabled
 
     @property
     def is_on(self) -> bool:
         """Return the state of the switch."""
-        return self._is_on
+        return self.coordinator.api_enabled
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the API communication on."""
-        self._is_on = True
-        self.coordinator.api_enabled = True  # Enable API communication
-        self.coordinator.async_request_refresh()  # Fetch data immediately
-        self.async_write_ha_state()
+        self.coordinator.api_enabled = True
+        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the API communication off."""
-        self._is_on = False
-        self.coordinator.api_enabled = False  # Disable API communication
-        self.async_write_ha_state()
+        self.coordinator.api_enabled = False
+        await self.coordinator.async_request_refresh()

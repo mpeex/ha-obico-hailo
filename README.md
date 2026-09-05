@@ -126,13 +126,47 @@ publishes the outcome back to HA.
 - **Config options**: `camera_entity` (entity id, e.g. `camera.front_door`),
   `interval` (seconds, default `10`), `threshold` (default `0.2`). These map to
   the same fields as the web UI.
-- **Published entities**:
-  - `binary_sensor.obico_failure` → `on`/`off` (spaghetti detected), attributes
-    carry `detections`, `avg_confidence`, `camera`.
-  - `sensor.obico_confidence` → average confidence (%), unit `%`.
+- **Published entities**: the addon publishes its result over the HA REST API
+  (`binary_sensor.obico_failure`, `sensor.obico_confidence`). These states are
+  visible in **Developer Tools → States**, but they are *not* registered in the
+  HA entity registry (no config entry), so they do not show up under
+  **Settings → Devices & Services** and vanish on HA restart until the addon
+  re-publishes. Use the **companion integration** (below) if you want first-class
+  entities with a device, unique ids and friendly names.
 
 The background worker runs in a daemon thread; its current state is available at
 `GET /status`.
+
+## Companion integration (registered entities)
+
+To get the detection result as **real HA entities** (registered under a device,
+with unique ids and friendly names), install the optional **`Obico ML (Hailo)`
+integration** shipped in `custom_components/obico_ml_hailo/`:
+
+1. Copy `custom_components/obico_ml_hailo/` into
+   `config/custom_components/obico_ml_hailo/` on your HA instance
+   (e.g. with the Samba share or the SSH add-on).
+2. Restart Home Assistant (Settings → System → Restart).
+3. Settings → Devices & Services → **Add Integration** → search *Obico ML (Hailo)*.
+4. Configure:
+   - **URL** → `http://obico_ml_hailo:3333/detect/` (the addon's internal
+     endpoint, default).
+   - **Camera entity** → the same `camera.*` entity the addon uses.
+   - **Interval** / **Threshold** → mirror the addon options (`10` / `0.2`).
+
+The integration polls the addon's detection API and exposes:
+
+- `binary_sensor.obico_failure` (device class `problem`) → `on` when the model
+  finds a failure, with `detections` / `avg_confidence` / `camera` attributes
+- `sensor.obico_confidence` → average confidence (%), unit `%`
+- `camera.obico_ml_detection_camera` → the annotated frame
+- `switch.obico_ml_communication` → pause/resume polling
+
+> The addon's own REST-published states (`binary_sensor.obico_failure`,
+> `sensor.obico_confidence`) are kept as a fallback that works **without** any
+> integration; installing the companion integration gives you the registry
+> entities. Both can coexist; the registered entities are the ones shown in the
+> UI.
 
 ## Endpoints (port 3333, or via Ingress → `nginx` 8099)
 

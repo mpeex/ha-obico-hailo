@@ -17,16 +17,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Obico detection from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
+    # Effective config = options (live-editable via the UI) over data.
+    cfg = {**entry.data, **entry.options}
+
     # Import data from config entry
     coordinator = ObicoDataUpdateCoordinator(
         hass,
-        url=entry.data["url"],
-        camera_entity=entry.data["camera_entity"],
-        interval=entry.data["interval"],
-        threshold=entry.data["threshold"],
+        url=cfg["url"],
+        camera_entity=cfg["camera_entity"],
+        interval=cfg["interval"],
+        threshold=cfg["threshold"],
     )
 
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception as err:
+        # Do not fail the whole setup if the addon is temporarily unreachable:
+        # entities are still registered and just show as unavailable until the
+        # next refresh succeeds.
+        _LOGGER.warning("Initial Obico refresh failed: %s", err)
 
     # Store the coordinator so it can be accessed by entities
     hass.data[DOMAIN][entry.entry_id] = coordinator
