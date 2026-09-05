@@ -220,3 +220,6 @@ __marimo__/
 # HailoRT offline binaries (large, not committed; see hailo_assets/README.md)
 hailo_assets/*.deb
 hailo_assets/*.whl
+
+# macOS
+.DS_Store
