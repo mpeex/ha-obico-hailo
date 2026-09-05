@@ -51,13 +51,14 @@ Both HEF sets ship in `app/model/` and are committed via Git LFS (`*.hef`).
 | `config.yaml` | addon descriptor; `devices: /dev/hailo0`, options `max_fps`, `camera_entity`, `interval`, `threshold` |
 | `build.yaml` | builder base-image mapping (`python:3.11-slim-bookworm` per arch) |
 | `repository.yaml` | HA addon repository descriptor (name, url, maintainer) |
-| `build-push.sh` | cross-compile (docker buildx) + push to `ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.3` |
+| `build-push.sh` | cross-compile (docker buildx) + push to `ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.5` |
 | `app/lib/hailo.py`, `meta.py` | Hailo inference runtime (from obico-server) |
 | `app/lib/ha.py` | HA/Supervisor connectivity (token, cameras, snapshot, state publish) |
 | `app/lib/config_store.py` | persist camera-selection config to `/data` |
 | `app/lib/detection_model.py` | `load_net` → `HailoNet` (`.hef` only) |
 | `app/model/` | `obico_part*.hef`, `decode.onnx`, `model.meta`, `names` |
 | `app/server.py` | Flask app: camera-selection web UI + background detection worker |
+| `ingress.conf` | HA Ingress nginx config (`listen 8099`, allow `172.30.32.2`, proxy → `3333`) |
 | `rootfs/` | s6 service lifecycle (exports config options as env vars) |
 | `hailo_assets/` | optional offline HailoRT binaries (`hailort_<V>_<arch>.deb` + wheel, arch derived from `BUILD_ARCH`) |
 | `hailo_assets/licenses/` | HailoRT redistribution licenses (MIT + LGPL-2.1), shipped inside the image |
@@ -118,9 +119,10 @@ token — no manual token needed). It enumerates your `camera.*` entities over
 the HA REST API, pulls the selected camera's snapshot, runs detection, and
 publishes the outcome back to HA.
 
-- **Web UI** (default port `3333`, or the addon's *Open Web UI* button): pick a
-  camera from the dropdown, set interval & threshold, and hit *Start detection*.
-  The choice is saved to `/data` and survives restarts.
+- **Web UI** (use the addon's *Open Web UI* button — it goes through HA
+  **Ingress**, `nginx` on port `8099` proxying to the Flask app on `3333`): pick
+  a camera from the dropdown, set interval & threshold, and hit *Start
+  detection*. The choice is saved to `/data` and survives restarts.
 - **Config options**: `camera_entity` (entity id, e.g. `camera.front_door`),
   `interval` (seconds, default `10`), `threshold` (default `0.2`). These map to
   the same fields as the web UI.
@@ -132,7 +134,11 @@ publishes the outcome back to HA.
 The background worker runs in a daemon thread; its current state is available at
 `GET /status`.
 
-## Endpoints (port 3333)
+## Endpoints (port 3333, or via Ingress → `nginx` 8099)
+
+The addon ships a small `nginx` front that provides the HA **Ingress** entry
+point (only accepts connections from `172.30.32.2`, sets `X-Ingress-Path`, and
+proxies everything to Flask on `3333`). The Flask app itself listens on `3333`:
 
 - `GET /` → camera-selection web UI
 - `GET /api/cameras` → `{"ok": true, "cameras": [...camera.* ids]}`
@@ -152,14 +158,14 @@ so `linux/arm64` can be built from any host — including a non-arm64 one):
 
 ```bash
 docker login ghcr.io
-./build-push.sh                 # linux/arm64, tag 0.3
-./build-push.sh 0.3 linux/amd64
+./build-push.sh                 # linux/arm64, tag 0.5
+./build-push.sh 0.5 linux/amd64
 ```
 
 `build-push.sh` sets the right `BUILD_ARCH` from the platform (`aarch64` for
 `linux/arm64`, `amd64` for `linux/amd64`), so the matching HailoRT .deb/.whl
 names are derived automatically and the final image is tagged and pushed as
-`ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.3` (the `<arch>` suffix matching
+`ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.5` (the `<arch>` suffix matching
 the `{arch}` placeholder in `config.yaml`).
 
 For an offline build, drop the 4.21.0 `.deb`/`.whl` matching your arch into
@@ -176,14 +182,14 @@ builds and pushes each arch with the same tag, still combinable manually):
 # arm64 variant (already pushed by ./build-push.sh ... linux/arm64)
 # amd64 variant comes from running it with linux/amd64
 # any host
-docker manifest create ghcr.io/mpeex/obico_ml_hailo_addon:0.3 \
-  ghcr.io/mpeex/obico_ml_hailo_addon-aarch64:0.3 \
-  ghcr.io/mpeex/obico_ml_hailo_addon-amd64:0.3
-docker manifest push ghcr.io/mpeex/obico_ml_hailo_addon:0.3
+docker manifest create ghcr.io/mpeex/obico_ml_hailo_addon:0.5 \
+  ghcr.io/mpeex/obico_ml_hailo_addon-aarch64:0.5 \
+  ghcr.io/mpeex/obico_ml_hailo_addon-amd64:0.5
+docker manifest push ghcr.io/mpeex/obico_ml_hailo_addon:0.5
 ```
 
 (Requires `docker login ghcr.io` with a token that has `write:packages`.) The
-image version (`0.3`, from `config.yaml`) is the Docker tag Supervisor pulls;
+image version (`0.5`, from `config.yaml`) is the Docker tag Supervisor pulls;
 the HailoRT version stays pinned inside the Dockerfile (`4.21.0`).
 
 ## License

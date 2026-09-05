@@ -320,11 +320,11 @@ function cfg(){return {camera_entity:document.getElementById('camera').value,
   interval:parseInt(document.getElementById('interval').value)||10,
   threshold:parseFloat(document.getElementById('threshold').value)||0.2};}
 document.getElementById('start').onclick = async () => {
-  const r = await fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg())});
+  const r = await fetch('api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg())});
   msg(await r.json());
 };
 document.getElementById('stop').onclick = async () => {
-  const r = await fetch('/api/stop',{method:'POST'});
+  const r = await fetch('api/stop',{method:'POST'});
   msg(await r.json());
 };
 </script>
