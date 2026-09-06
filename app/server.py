@@ -175,10 +175,36 @@ def _auto_start_worker():
 
 
 def draw_bounding_boxes(image, detections):
+    """Overlay the detection state on `image`.
+
+    Always draws a status banner (top-left): a green 'NO FAILURE' when no
+    detections, or a red 'FAILURE xx.x%' with the average confidence when the
+    model fires. Any detected object is additionally boxed in red with its own
+    label/confidence. This keeps the exposed camera stream self-explanatory.
+    """
+    avg = 0.0
+    if detections:
+        avg = round((sum(d[1] for d in detections) / len(detections)) * 100, 1)
+    if detections:
+        banner = f"FAILURE ({avg:.1f}%)"
+        color = (0, 0, 255)  # red
+    else:
+        banner = "NO FAILURE"
+        color = (0, 200, 0)  # green
+
+    (bw, bh), _ = cv2.getTextSize(banner, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 2)
+    bx, by = 10, 10
+    cv2.rectangle(
+        image, (bx, by), (bx + bw + 20, by + bh + 20), (0, 0, 0), -1
+    )
+    cv2.putText(
+        image, banner, (bx + 10, by + bh + 10),
+        cv2.FONT_HERSHEY_SIMPLEX, 1.2, color, 2,
+    )
+
     for detection in detections:
         label, confidence, bbox = detection
         x, y, w, h = [int(v) for v in bbox]
-        color = (0, 0, 255)  # Red color for bounding box
         cv2.rectangle(image, (x, y), (x + w, y + h), color, 5)
         text = f"{label}: {confidence:.2f}"
         cv2.putText(image, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 1.5, color, 2)
