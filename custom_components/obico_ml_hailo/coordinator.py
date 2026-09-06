@@ -25,12 +25,12 @@ class ObicoDataUpdateCoordinator(DataUpdateCoordinator):
         hass: HomeAssistant,
         url: str,
         camera_entity: str,
-        interval: int,
+        detection_interval: int,
         threshold: float,
     ):
         self._base_url = url.rstrip("/")
         self.camera_entity = camera_entity
-        self._interval = interval
+        self._interval = detection_interval
         self._threshold = threshold
         self._session = aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=10)
@@ -40,7 +40,7 @@ class ObicoDataUpdateCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="Obico ML",
-            update_interval=timedelta(seconds=interval),
+            update_interval=timedelta(seconds=self._interval),
         )
 
     async def _async_update_data(self):
@@ -67,7 +67,7 @@ class ObicoDataUpdateCoordinator(DataUpdateCoordinator):
         if running:
             payload = {
                 "camera_entity": self.camera_entity,
-                "interval": self._interval,
+                "detection_interval": self._interval,
                 "threshold": self._threshold,
             }
             async with self._session.post(

@@ -17,7 +17,7 @@ CONFIG_FILE = os.path.join(DATA_DIR, "obico_config.json")
 
 DEFAULTS = {
     "camera_entity": "",
-    "interval": 10,
+    "detection_interval": 1,
     "threshold": 0.2,
     "auto_start": False,
 }
@@ -57,11 +57,11 @@ def load_config():
     # Environment overrides take precedence (set by the s6 run script).
     if os.environ.get("CAMERA_ENTITY", ""):
         cfg["camera_entity"] = os.environ["CAMERA_ENTITY"]
-    for key in ("interval", "threshold"):
+    for key in ("detection_interval", "threshold"):
         env = os.environ.get(key.upper(), "")
         if env:
             try:
-                cfg[key] = (int if key == "interval" else float)(env)
+                cfg[key] = (int if key == "detection_interval" else float)(env)
             except ValueError:
                 pass
     if os.environ.get("AUTO_START", "") not in ("", None):

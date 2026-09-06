@@ -48,7 +48,7 @@ Both HEF sets ship in `app/model/` and are committed via Git LFS (`*.hef`).
 | Path | Purpose |
 |------|---------|
 | `Dockerfile` | single self-contained addon image (HailoRT + onnxruntime + OpenCV + s6-overlay + Flask app) |
-| `config.yaml` | addon descriptor; `devices: /dev/hailo0`, options `max_fps`, `camera_entity`, `interval`, `threshold` |
+| `config.yaml` | addon descriptor; `devices: /dev/hailo0`, options `camera_entity`, `detection_interval`, `threshold` |
 | `build.yaml` | builder base-image mapping (`python:3.11-slim-bookworm` per arch) |
 | `repository.yaml` | HA addon repository descriptor (name, url, maintainer) |
 | `build-push.sh` | cross-compile (docker buildx) + push to `ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.7` |
@@ -107,9 +107,8 @@ To install as a local addon:
 
 1. Copy this repo to a folder reachable by HAOS and add it as a **local addon**
    (or add the repository and install `Obico ML (Hailo)`).
-2. In the addon configuration set `max_fps` (default `1`); increase it to at
-   most `2` if you want more responsive (un-throttled) detection while sharing
-   the Hailo with other processes.
+2. In the addon configuration set `camera_entity` and `detection_interval`
+   (seconds between detection cycles, minimum `1`; default `1`).
 
 ## Camera selection (self-contained)
 
@@ -123,9 +122,9 @@ publishes the outcome back to HA.
   **Ingress**, `nginx` on port `8099` proxying to the Flask app on `3333`): pick
   a camera from the dropdown, set interval & threshold, and hit *Start
   detection*. The choice is saved to `/data` and survives restarts.
-- **Config options**: `camera_entity` (entity id, e.g. `camera.front_door`),
-  `interval` (seconds, default `10`), `threshold` (default `0.2`). These map to
-  the same fields as the web UI.
+- **Config options**: `camera_entity` (entity id, e.g. `camera.p1s_..._camera`),
+  `detection_interval` (seconds, minimum `1`, default `1`), `threshold`
+  (default `0.2`). These map to the same fields as the web UI.
 - **Published entities**: the addon publishes its result over the HA REST API
   (`binary_sensor.obico_failure`, `sensor.obico_confidence`). These states are
   visible in **Developer Tools → States**, but they are *not* registered in the
@@ -180,14 +179,15 @@ proxies everything to Flask on `3333`). The Flask app itself listens on `3333`:
 
 - `GET /` → camera-selection web UI
 - `GET /api/cameras` → `{"ok": true, "cameras": [...camera.* ids]}`
-- `GET/POST /api/config` → read/update `camera_entity`, `interval`, `threshold`
+- `GET/POST /api/config` → read/update `camera_entity`, `detection_interval`, `threshold`
 - `POST /api/start`, `POST /api/stop` → start/stop the detection worker
 - `GET /status` → config, HA connectivity and last detection state
 - `GET /hc/` → `ok` (health)
 
-`MAX_FPS` (the `max_fps` addon option) is a **last-frame-wins** throttle on the
-shared Hailo: surplus requests reuse the previous frame's detections instead of
-running inference, leaving the accelerator free for other consumers.
+`detection_interval` (seconds, minimum `1`) is the single detection knob: every
+`detection_interval` seconds the addon captures a frame, runs one inference on
+the Hailo and refreshes the annotated stream. A minimum of 1 s guarantees the
+device is shared fairly with other processes on the same Hailo.
 
 ## Publish to GHCR
 

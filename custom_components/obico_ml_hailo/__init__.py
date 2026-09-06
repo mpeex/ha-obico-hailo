@@ -25,7 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass,
         url=cfg["url"],
         camera_entity=cfg["camera_entity"],
-        interval=cfg["interval"],
+        detection_interval=cfg["detection_interval"],
         threshold=cfg["threshold"],
     )
 

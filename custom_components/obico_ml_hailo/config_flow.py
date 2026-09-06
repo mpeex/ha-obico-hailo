@@ -1,21 +1,21 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_THRESHOLD, DEFAULT_URL
+from .const import DOMAIN, DEFAULT_DETECTION_INTERVAL, DEFAULT_THRESHOLD, DEFAULT_URL
 
 
 def _create_schema(config_entry=None):
     if config_entry:
         return vol.Schema({
             vol.Required("url", default=config_entry.options.get("url", DEFAULT_URL)): str,
-            vol.Required("interval", default=config_entry.options.get("interval", DEFAULT_INTERVAL)): int,
+            vol.Required("detection_interval", default=config_entry.options.get("detection_interval", DEFAULT_DETECTION_INTERVAL)): vol.All(int, vol.Range(min=1)),
             vol.Required("camera_entity", default=config_entry.options.get("camera_entity", "camera.your_entity")): str,
             vol.Optional("threshold", default=config_entry.options.get("threshold", DEFAULT_THRESHOLD)): float,
         })
     else:
         return vol.Schema({
             vol.Required("url", default=DEFAULT_URL): str,
-            vol.Required("interval", default=DEFAULT_INTERVAL): int,
+            vol.Required("detection_interval", default=DEFAULT_DETECTION_INTERVAL): vol.All(int, vol.Range(min=1)),
             vol.Required("camera_entity", default="camera.your_entity"): str,
             vol.Optional("threshold", default=DEFAULT_THRESHOLD): float,
         })

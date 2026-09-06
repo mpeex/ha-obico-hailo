@@ -16,40 +16,6 @@ from lib import ha as ha_lib
 from lib.config_store import load_config, save_config
 
 
-# Optional last-frame-wins frame-rate limiter. When MAX_FPS is set (e.g. "1"),
-# detection is throttled to at most MAX_FPS inferences per second; requests that
-# arrive within an already-consumed time slot immediately reuse the previous
-# detection list instead of running the Hailo device (which is thereby left free
-# for other consumers). Unset by default => no limiting. Set via the add-on
-# configuration option `max_fps`.
-MAX_FPS = environ.get('MAX_FPS')
-
-
-class FrameRateLimiter:
-    """Last-frame-wins throttle: runs at most MAX_FPS inferences/sec, reuses the
-    last detection result for requests that exceed the budget."""
-
-    def __init__(self, max_fps=None):
-        self.min_interval = 1.0 / float(max_fps) if max_fps else 0.0
-        self._last_ts = None
-        self._last_detections = []
-
-    def run(self, fn):
-        """Execute fn only if the time budget allows; otherwise return the last
-        cached frame's detections without consuming Hailo."""
-        now = time.monotonic()
-        if self.min_interval > 0.0:
-            if self._last_ts is not None:
-                elapsed = now - self._last_ts
-                if elapsed < self.min_interval:
-                    # Frame is throttled: reuse the previous result (drop, no infer).
-                    return self._last_detections
-            # First frame, or budget elapsed: always run and set the clock.
-            self._last_ts = now
-        result = fn()
-        self._last_detections = result
-        return result
-
 app = flask.Flask(__name__)
 Compress(app)
 
@@ -119,7 +85,7 @@ def _camera_worker():
     while not _stop_event.is_set():
         cfg = load_config()
         camera = cfg.get("camera_entity", "")
-        interval = int(cfg.get("interval", 10))
+        interval = int(cfg.get("detection_interval", 1))
         threshold = float(cfg.get("threshold", 0.2))
         if camera:
             with _cam_lock:
@@ -128,9 +94,7 @@ def _camera_worker():
                 image_bytes = ha_lib.fetch_camera_image(camera)
                 img_array = np.frombuffer(image_bytes, dtype=np.uint8)
                 img = cv2.imdecode(img_array, -1)
-                detections = _rate_limiter.run(
-                    lambda: detect(net_main, img, thresh=threshold)
-                )
+                detections = detect(net_main, img, thresh=threshold)
                 img_with_boxes = draw_bounding_boxes(img, detections)
                 _, buffer = cv2.imencode('.jpg', img_with_boxes)
                 with _cam_lock:
@@ -158,10 +122,6 @@ def _ensure_camera_worker_started():
 
 model_dir = path.join(path.dirname(path.realpath(__file__)), 'model')
 net_main = load_net(path.join(model_dir, 'model.cfg'), path.join(model_dir, 'model.meta'))
-
-# One shared limiter per worker. With gunicorn --workers 1 this is a single
-# process-wide throttle; the budget is global to the Hailo device.
-_rate_limiter = FrameRateLimiter(MAX_FPS)
 
 
 def _auto_start_worker():
@@ -355,8 +315,8 @@ _UI_PAGE = """<!DOCTYPE html>
   </select>
   <div class="muted">Cameras are enumerated from Home Assistant.{% if not cameras %}{% if ha_ok %} No camera.* entities found.{% endif %}{% endif %}</div>
 
-  <label for="interval">Interval (seconds)</label>
-  <input id="interval" type="number" min="1" value="{{ config.interval }}" />
+  <label for="detection_interval">Detection interval (seconds, min 1)</label>
+  <input id="detection_interval" type="number" min="1" value="{{ config.detection_interval }}" />
 
   <label for="threshold">Threshold (0–1)</label>
   <input id="threshold" type="number" step="0.01" min="0" max="1" value="{{ config.threshold }}" />
@@ -372,7 +332,7 @@ _UI_PAGE = """<!DOCTYPE html>
 const msg = el => { const d = document.getElementById('msg'); d.className='msg '+(el.ok?'ok':'err');
   d.innerHTML = el.ok ? (el.detail||'Saved.') : ('Error: '+(el.error||'unknown')); };
 function cfg(){return {camera_entity:document.getElementById('camera').value,
-  interval:parseInt(document.getElementById('interval').value)||10,
+  detection_interval:parseInt(document.getElementById('detection_interval').value)||1,
   threshold:parseFloat(document.getElementById('threshold').value)||0.2,
   auto_start:document.getElementById('auto_start').checked};}
 document.getElementById('start').onclick = async () => {

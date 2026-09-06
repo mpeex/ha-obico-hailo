@@ -1,5 +1,5 @@
 name: Obico ML (Hailo)
-version: "0.12"
+version: "0.13"
 slug: obico_ml_hailo
 description: >-
   Home Assistant addon for Obico ML-based spaghetti/failure detection on a
@@ -16,16 +16,15 @@ stateful: true
 udev: true
 devices:
   - /dev/hailo0
+homeassistant: "2026.9.0"
 options:
-  max_fps: 1
   camera_entity: ""
-  interval: 10
+  detection_interval: 1
   threshold: 0.2
   auto_start: false
 schema:
-  max_fps: "int(0,60)"
   camera_entity: str
-  interval: "int(1,3600)"
+  detection_interval: "int(1,3600)"
   threshold: "float(0,1)"
   auto_start: bool
 homeassistant_api: true
