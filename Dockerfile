@@ -162,6 +162,11 @@ RUN \
 COPY rootfs /
 COPY s6-overlay /package/admin/s6-overlay-${S6_OVERLAY_VERSION}/
 
+# COPY never deletes: the rootfs no longer ships the removed Ingress/nginx s6
+# service (whiteouts remove its files but leave stale subdirs from older
+# layers, which breaks s6-rc-compile). Drop the whole service tree explicitly.
+RUN rm -rf /etc/s6-overlay/s6-rc.d/nginx
+
 # ---------------------------------------------------------------------------
 # Obico ML API
 # ---------------------------------------------------------------------------

@@ -18,6 +18,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   selector filtered on the `camera.*` domain, default empty); no custom UI.
 - Addon declares a minimum Home Assistant core of `2026.9.0`.
 
+### Fixed
+
+- Addon boot after removing Ingress/nginx: `COPY rootfs /` whiteouts the old
+  `nginx` s6 service files but left a stale `dependencies.d` subdir from older
+  layers, which made `s6-rc-compile` fail on a missing `nginx/type`. The
+  Dockerfile now removes the whole `s6-rc.d/nginx` tree explicitly.
+
 ### Removed
 
 - `max_fps` option and the `FrameRateLimiter` code path.
