@@ -11,10 +11,15 @@ It runs a port of the **Obico YOLOv5** model (1 class: `failure`) on the Hailo
 device using the two compiled HEFs (`obico_part1.hef` / `obico_part2.hef`) plus
 the host-side `decode.onnx` head.
 
-The addon is **self-contained**: it discovers the user's `camera.*` entities and
-lets you pick one from a built-in web UI, then polls that camera's snapshot,
-runs inference and publishes the result back to HA (`binary_sensor.obico_failure`
-and `sensor.obico_confidence`). No companion integration is required.
+The bundle comes in two parts:
+
+- an **addon** that runs the Obico model on the Hailo, pulls the configured
+  camera's snapshot from HA and exposes an annotated stream + detection state
+  over a small REST API (port `3333`);
+- a **companion integration** (`custom_components/obico_ml_hailo`) that mirrors
+  the addon's state into registered HA entities (`binary_sensor`,
+  `sensor`, `camera`, `switch`). The camera is picked from a dropdown in the
+  integration's options flow (HA `entity` selector, domain `camera.*`).
 
 ## Architecture
 
@@ -23,7 +28,7 @@ camera (HA entity)
    │  snapshot via HA REST API (Supervisor token)
    ▼
 HA addon (Flask :3333)
-   └── camera worker (daemon thread) → detect → publish to HA
+   └── camera worker (daemon thread) → detect → annotated stream + /status
         │
         ▼
 lib/hailo.py  (HailoNet)
@@ -51,14 +56,13 @@ Both HEF sets ship in `app/model/` and are committed via Git LFS (`*.hef`).
 | `config.yaml` | addon descriptor; `devices: /dev/hailo0`, options `camera_entity`, `detection_interval`, `threshold` |
 | `build.yaml` | builder base-image mapping (`python:3.11-slim-bookworm` per arch) |
 | `repository.yaml` | HA addon repository descriptor (name, url, maintainer) |
-| `build-push.sh` | cross-compile (docker buildx) + push to `ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.7` |
+| `build-push.sh` | cross-compile (docker buildx) + push to `ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.14` |
 | `app/lib/hailo.py`, `meta.py` | Hailo inference runtime (from obico-server) |
-| `app/lib/ha.py` | HA/Supervisor connectivity (token, cameras, snapshot, state publish) |
+| `app/lib/ha.py` | HA/Supervisor connectivity (token, camera snapshot) |
 | `app/lib/config_store.py` | persist camera-selection config to `/data` |
 | `app/lib/detection_model.py` | `load_net` → `HailoNet` (`.hef` only) |
 | `app/model/` | `obico_part*.hef`, `decode.onnx`, `model.meta`, `names` |
-| `app/server.py` | Flask app: camera-selection web UI + background detection worker |
-| `ingress.conf` | HA Ingress nginx config (`listen 8099`, allow `172.30.32.2`, proxy → `3333`) |
+| `app/server.py` | Flask app: detection worker + REST API |
 | `rootfs/` | s6 service lifecycle (exports config options as env vars) |
 | `hailo_assets/` | optional offline HailoRT binaries (`hailort_<V>_<arch>.deb` + wheel, arch derived from `BUILD_ARCH`) |
 | `hailo_assets/licenses/` | HailoRT redistribution licenses (MIT + LGPL-2.1), shipped inside the image |
@@ -107,39 +111,37 @@ To install as a local addon:
 
 1. Copy this repo to a folder reachable by HAOS and add it as a **local addon**
    (or add the repository and install `Obico ML (Hailo)`).
-2. In the addon configuration set `camera_entity` and `detection_interval`
-   (seconds between detection cycles, minimum `1`; default `1`).
+2. Install the **companion integration** (below) and pick the camera from its
+   options dropdown. The `camera_entity` addon option may stay empty: the
+   integration pushes the camera it is configured with when detection starts.
 
-## Camera selection (self-contained)
+## Camera selection
 
 On HAOS the addon talks to Home Assistant through the **Supervisor API** (the
 `SUPERVISOR_TOKEN` is injected automatically and exchanged for a HA core access
-token — no manual token needed). It enumerates your `camera.*` entities over
-the HA REST API, pulls the selected camera's snapshot, runs detection, and
-publishes the outcome back to HA.
+token — no manual token needed). It pulls the configured camera's snapshot over
+the HA REST API, runs detection, and serves the annotated frame + state to the
+companion integration.
 
-- **Web UI** (use the addon's *Open Web UI* button — it goes through HA
-  **Ingress**, `nginx` on port `8099` proxying to the Flask app on `3333`): pick
-  a camera from the dropdown, set interval & threshold, and hit *Start
-  detection*. The choice is saved to `/data` and survives restarts.
-- **Config options**: `camera_entity` (entity id, e.g. `camera.p1s_..._camera`),
-  `detection_interval` (seconds, minimum `1`, default `1`), `threshold`
-  (default `0.2`). These map to the same fields as the web UI.
-- **Published entities**: the addon publishes its result over the HA REST API
-  (`binary_sensor.obico_failure`, `sensor.obico_confidence`). These states are
-  visible in **Developer Tools → States**, but they are *not* registered in the
-  HA entity registry (no config entry), so they do not show up under
-  **Settings → Devices & Services** and vanish on HA restart until the addon
-  re-publishes. Use the **companion integration** (below) if you want first-class
-  entities with a device, unique ids and friendly names.
+The camera is chosen from a dropdown in the integration's options flow (an HA
+`entity` selector filtered on the `camera.*` domain, so no custom UI is needed).
+The addon options are:
 
-The background worker runs in a daemon thread; its current state is available at
-`GET /status`.
+- `camera_entity` — entity id, e.g. `camera.p1s_..._camera` (default empty; the
+  integration overrides it on start);
+- `detection_interval` — seconds between detection cycles (minimum `1`, default
+  `1`);
+- `threshold` — detection confidence threshold (default `0.2`);
+- `auto_start` — start the worker on addon boot (default `false`).
+
+These map 1:1 to the fields of the integration options flow. The effective
+config is saved to `/data` and survives restarts; `detection_interval` and
+`threshold` can also be tuned with `GET/POST /api/config`.
 
 ## Companion integration (registered entities)
 
 To get the detection result as **real HA entities** (registered under a device,
-with unique ids and friendly names), install the optional **`Obico ML (Hailo)`
+with unique ids and friendly names), install the **`Obico ML (Hailo)`
 integration** shipped in `custom_components/obico_ml_hailo/`:
 
 1. Copy `custom_components/obico_ml_hailo/` into
@@ -151,13 +153,15 @@ integration** shipped in `custom_components/obico_ml_hailo/`:
    - **URL** → `http://172.30.32.1:3333` (the addon's API port, published on the
      Supervisor network gateway so HA core reaches it without DNS; the addon's
      own hostname is not resolvable from HA core).
-   - **Camera entity** → the `camera.*` entity the addon uses.
-   - **Interval** / **Threshold** → mirror the addon options (`10` / `0.2`).
+   - **Camera entity** → pick from the dropdown; only `camera.*` entities are
+     listed.
+   - **Detection interval** (min `1`) / **Threshold** → mirror the addon
+     options (`1` / `0.2`).
 
 The integration mirrors the addon's camera worker — it does **not** touch the
 camera or the Hailo itself (the addon's own worker does the frame capture and
-inference; start it from the addon web UI, enable *auto-start* in the addon
-options, or flip the detection switch below). It exposes:
+inference; start it by toggling the switch below, or enable *auto-start* in the
+addon options so detection resumes on boot). It exposes:
 
 - `binary_sensor.obico_failure` (device class `problem`) → `on` when the model
   finds a failure, with `detections` / `avg_confidence` / `camera` attributes
@@ -165,23 +169,15 @@ options, or flip the detection switch below). It exposes:
 - `camera.obico_ml_detection_camera` → the annotated frame from the addon
 - `switch.obico_ml_detection` → start/stop the addon's detection worker
 
-> The addon's own REST-published states (`binary_sensor.obico_failure`,
-> `sensor.obico_confidence`) are kept as a fallback that works **without** any
-> integration; installing the companion integration gives you the registry
-> entities. Both can coexist; the registered entities are the ones shown in the
-> UI.
+## Endpoints (port 3333)
 
-## Endpoints (port 3333, or via Ingress → `nginx` 8099)
+The Flask app listens on `3333`; the integration talks to it over the
+Supervisor network (`http://172.30.32.1:3333`):
 
-The addon ships a small `nginx` front that provides the HA **Ingress** entry
-point (only accepts connections from `172.30.32.2`, sets `X-Ingress-Path`, and
-proxies everything to Flask on `3333`). The Flask app itself listens on `3333`:
-
-- `GET /` → camera-selection web UI
-- `GET /api/cameras` → `{"ok": true, "cameras": [...camera.* ids]}`
 - `GET/POST /api/config` → read/update `camera_entity`, `detection_interval`, `threshold`
 - `POST /api/start`, `POST /api/stop` → start/stop the detection worker
-- `GET /status` → config, HA connectivity and last detection state
+- `GET /status` → config and last detection state
+- `GET /last_image` → latest annotated frame (JPEG)
 - `GET /hc/` → `ok` (health)
 
 `detection_interval` (seconds, minimum `1`) is the single detection knob: every
@@ -196,14 +192,14 @@ so `linux/arm64` can be built from any host — including a non-arm64 one):
 
 ```bash
 docker login ghcr.io
-./build-push.sh                 # linux/arm64, tag 0.7
-./build-push.sh 0.7 linux/amd64
+./build-push.sh                 # linux/arm64, tag 0.14
+./build-push.sh 0.14 linux/amd64
 ```
 
 `build-push.sh` sets the right `BUILD_ARCH` from the platform (`aarch64` for
 `linux/arm64`, `amd64` for `linux/amd64`), so the matching HailoRT .deb/.whl
 names are derived automatically and the final image is tagged and pushed as
-`ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.7` (the `<arch>` suffix matching
+`ghcr.io/mpeex/obico_ml_hailo_addon-<arch>:0.14` (the `<arch>` suffix matching
 the `{arch}` placeholder in `config.yaml`).
 
 For an offline build, drop the 4.21.0 `.deb`/`.whl` matching your arch into
@@ -220,14 +216,14 @@ builds and pushes each arch with the same tag, still combinable manually):
 # arm64 variant (already pushed by ./build-push.sh ... linux/arm64)
 # amd64 variant comes from running it with linux/amd64
 # any host
-docker manifest create ghcr.io/mpeex/obico_ml_hailo_addon:0.7 \
-  ghcr.io/mpeex/obico_ml_hailo_addon-aarch64:0.7 \
-  ghcr.io/mpeex/obico_ml_hailo_addon-amd64:0.7
-docker manifest push ghcr.io/mpeex/obico_ml_hailo_addon:0.7
+docker manifest create ghcr.io/mpeex/obico_ml_hailo_addon:0.14 \
+  ghcr.io/mpeex/obico_ml_hailo_addon-aarch64:0.14 \
+  ghcr.io/mpeex/obico_ml_hailo_addon-amd64:0.14
+docker manifest push ghcr.io/mpeex/obico_ml_hailo_addon:0.14
 ```
 
 (Requires `docker login ghcr.io` with a token that has `write:packages`.) The
-image version (`0.7`, from `config.yaml`) is the Docker tag Supervisor pulls;
+image version (`0.14`, from `config.yaml`) is the Docker tag Supervisor pulls;
 the HailoRT version stays pinned inside the Dockerfile (`4.21.0`).
 
 ## License

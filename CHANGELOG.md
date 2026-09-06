@@ -4,23 +4,31 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.13] — unreleased
+## [0.14] — unreleased
 
 ### Changed
 
-- Detection is now driven by a single `detection_interval` option (seconds,
+- Detection is driven by a single `detection_interval` option (seconds,
   minimum `1`, default `1`) replacing the `max_fps` throttle and the old
   `interval` option.
 - Companion integration (1.2.0): renamed `interval` to `detection_interval`
   (minimum `1`, default `1`) in the options flow and in the `/api/start`
   payload.
+- Integration options now pick the camera from a native HA dropdown (`entity`
+  selector filtered on the `camera.*` domain, default empty); no custom UI.
 - Addon declares a minimum Home Assistant core of `2026.9.0`.
 
 ### Removed
 
 - `max_fps` option and the `FrameRateLimiter` code path.
+- Self-contained mode: Flask camera-selection web UI, camera enumeration
+  (`/api/cameras`, `list_cameras`) and the addon's direct REST state publishing
+  (`binary_sensor.obico_failure` / `sensor.obico_confidence` are now mirrored
+  exclusively through the companion integration).
+- HA Ingress / nginx reverse proxy (the integration talks to the addon directly
+  on port `3333`).
 
-## [0.12]
+## [0.13]
 
 ### Changed
 

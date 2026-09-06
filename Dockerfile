@@ -53,17 +53,13 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 #   libglib2.0-0        shared lib required by opencv-python-headless
 #   libssl3 libudev1    HailoRT runtime libs
 #   gcc python3-dev     to build netifaces (hailort 4.21 runtime dep)
-#   nginx-light         HA Ingress reverse proxy (frontend for the Flask app)
 # ---------------------------------------------------------------------------
 RUN apt-get update \
     && apt-get install --no-install-recommends --assume-yes \
         ca-certificates curl jq tzdata xz-utils \
         libgomp1 libglib2.0-0 libssl3 libudev1 \
-        gcc python3-dev wget nginx-light \
+        gcc python3-dev wget \
     && rm -rf /var/lib/apt/lists/*
-
-# HA Ingress nginx config (accepts only 172.30.32.2, proxies to Flask on 3333).
-COPY ingress.conf /etc/nginx/conf.d/ingress.conf
 
 # The hailo_assets/ dir always exists in the context (kept, possibly empty).
 COPY hailo_assets/ /hailo_assets_local/

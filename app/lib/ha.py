@@ -5,9 +5,7 @@ The addon is a container running on HAOS. It reaches
   - the Supervisor  at  http://supervisor          (SUPERVISOR_TOKEN env)
   - the HA core API at  http://supervisor/core/api  (SUPERVISOR_TOKEN env)
 
-This lets the addon be self-contained: it discovers the user's camera.*
-entities, fetches snapshots and publishes detection results back to HA
-entities without depending on a companion integration.
+This is used to fetch the configured camera's snapshot for detection.
 """
 
 import logging
@@ -24,11 +22,6 @@ SUPERVISOR_URL = os.environ.get("HA_SUPERVISOR_URL", "http://supervisor")
 def supervisor_token():
     """The Supervisor token injected into the addon container."""
     return os.environ.get("SUPERVISOR_TOKEN")
-
-
-def ha_available():
-    """True when running under HAOS with Supervisor token present."""
-    return bool(supervisor_token())
 
 
 def ha_request(method, path, **kwargs):
@@ -57,28 +50,6 @@ def ha_request(method, path, **kwargs):
     )
     resp.raise_for_status()
     return resp
-
-
-def list_cameras():
-    """Return a sorted list of camera.* entity ids.
-
-    Includes all camera.* entities, regardless of state, so that the UI
-    dropdown can populate even when cameras report 'unavailable'/'unknown'
-    during startup.  Diagnostic logging helps spot filtering issues in
-    future runs.
-    """
-    states = ha_request("GET", "api/states").json()
-    cameras = sorted(
-        s["entity_id"]
-        for s in states
-        if s["entity_id"].startswith("camera.")
-    )
-    _LOGGER.debug(
-        "list_cameras: %d camera.* entities found: %s",
-        len(cameras),
-        cameras,
-    )
-    return cameras
 
 
 def camera_entity_picture(camera_entity):
@@ -139,12 +110,3 @@ def fetch_camera_image(camera_entity):
         raise RuntimeError(
             f"Camera {camera_entity} unavailable: no snapshot ({err})"
         ) from err
-
-
-def set_state(entity_id, state, attributes=None):
-    """Create/update a HA entity state via the REST API."""
-    ha_request(
-        "POST",
-        f"api/states/{entity_id}",
-        json={"state": state, "attributes": attributes or {}},
-    )

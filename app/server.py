@@ -3,7 +3,7 @@
 import time
 import flask
 from flask_compress import Compress
-from flask import request, jsonify, render_template_string
+from flask import request, jsonify
 from os import path, environ
 import cv2
 import numpy as np
@@ -27,13 +27,12 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Self-contained camera selection.
+# Detection worker.
 #
-# The addon can discover the user's camera.* entities via the HA core REST
-# API (see lib/ha.py), pull the selected camera's snapshot, run detection and
-# publish the outcome back to HA entities. This makes the addon independent of
-# a companion integration. The worker runs in a daemon thread; selecting a
-# camera from the web UI (or a config option) starts it.
+# The addon pulls the configured camera's snapshot from HA (see lib/ha.py),
+# runs detection on the Hailo and exposes the annotated frame + result through
+# its REST API. The companion integration drives it and mirrors the outcome as
+# registered HA entities.
 # ---------------------------------------------------------------------------
 cam_state = {
     "running": False,
@@ -55,30 +54,6 @@ def _publish_result(detections):
         cam_state["last_detections"] = detections
         cam_state["last_avg_confidence"] = avg
         cam_state["last_update"] = time.time()
-    error = bool(detections)
-    try:
-        ha_lib.set_state(
-            "binary_sensor.obico_failure",
-            "on" if error else "off",
-            {
-                "friendly_name": "Obico ML failure",
-                "detections": detections,
-                "avg_confidence": avg,
-                "camera": load_config().get("camera_entity", ""),
-                "icon": "mdi:alert" if error else "mdi:check",
-            },
-        )
-        ha_lib.set_state(
-            "sensor.obico_confidence",
-            str(avg),
-            {
-                "friendly_name": "Obico ML confidence",
-                "unit_of_measurement": "%",
-                "camera": load_config().get("camera_entity", ""),
-            },
-        )
-    except Exception as err:
-        logger.error("Failed to publish state to HA: %s", err)
 
 
 def _camera_worker():
@@ -126,8 +101,8 @@ net_main = load_net(path.join(model_dir, 'model.cfg'), path.join(model_dir, 'mod
 
 def _auto_start_worker():
     """Start the camera worker on boot when auto_start is enabled and a
-    camera is configured, so detection resumes without clicking Start in the
-    web UI."""
+    camera is configured, so detection resumes without the integration having
+    to toggle the switch after every restart."""
     cfg = load_config()
     if cfg.get("auto_start") and cfg.get("camera_entity"):
         _stop_event.clear()
@@ -207,29 +182,6 @@ def failure_detect():
 def health_check():
     return 'ok' if net_main is not None else 'error'
 
-@app.route('/', methods=['GET'])
-def index():
-    cfg = load_config()
-    cameras = []
-    ha_ok = ha_lib.ha_available()
-    if ha_ok:
-        try:
-            cameras = ha_lib.list_cameras()
-        except Exception as err:
-            logger.error("Failed to list cameras: %s", err)
-    return render_template_string(_UI_PAGE, config=cfg, cameras=cameras, ha_ok=ha_ok)
-
-
-@app.route('/api/cameras', methods=['GET'])
-def api_cameras():
-    if not ha_lib.ha_available():
-        return jsonify({"ok": False, "error": "Not running under HAOS (no Supervisor token)"}), 503
-    try:
-        return jsonify({"ok": True, "cameras": ha_lib.list_cameras()})
-    except Exception as err:
-        logger.error("Failed to list cameras: %s", err)
-        return jsonify({"ok": False, "error": str(err)}), 500
-
 
 @app.route('/api/config', methods=['GET', 'POST'])
 def api_config():
@@ -247,7 +199,6 @@ def api_status():
     return jsonify({
         "ok": True,
         "config": load_config(),
-        "ha_connected": ha_lib.ha_available(),
         "state": snap,
     })
 
@@ -279,74 +230,6 @@ def api_stop():
         cam_state["running"] = False
     return jsonify({"ok": True})
 
-
-_UI_PAGE = """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Obico ML (Hailo) — Camera</title>
-<style>
-  body{font-family:system-ui,sans-serif;background:#f4f6f8;margin:0;padding:24px;color:#1c2733}
-  .card{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:24px;max-width:560px;margin:0 auto}
-  h1{font-size:20px;margin-top:0}
-  label{display:block;font-weight:600;margin:14px 0 6px;font-size:14px}
-  select,input{width:100%;box-sizing:border-box;padding:9px;border:1px solid #cbd5e0;border-radius:6px;font-size:14px}
-  .btn{display:inline-block;border:0;border-radius:6px;padding:11px 18px;font-size:14px;cursor:pointer;color:#fff;margin-top:16px}
-  .btn-start{background:#2f8132}.btn-stop{background:#c53030}.btn:disabled{opacity:.5;cursor:not-allowed}
-  .msg{margin-top:16px;padding:12px;border-radius:6px;font-size:14px}
-  .ok{background:#e6ffed;color:#22543d}.err{background:#ffebeb;color:#742a2a}
-  .muted{color:#718096;font-size:12px;margin-top:8px}
-</style>
-</head>
-<body>
-<div class="card">
-  <h1>Obico ML (Hailo) — Camera selection</h1>
-  {% if not ha_ok %}
-    <div class="msg err">Home Assistant (Supervisor) is not reachable from this addon.
-      Install it on HAOS so it can list and snapshot cameras automatically.</div>
-  {% endif %}
-  <label for="camera">Camera entity</label>
-  <select id="camera">
-    <option value="">— select a camera —</option>
-    {% for c in cameras %}
-      <option value="{{ c }}" {% if config.camera_entity == c %}selected{% endif %}>{{ c }}</option>
-    {% endfor %}
-  </select>
-  <div class="muted">Cameras are enumerated from Home Assistant.{% if not cameras %}{% if ha_ok %} No camera.* entities found.{% endif %}{% endif %}</div>
-
-  <label for="detection_interval">Detection interval (seconds, min 1)</label>
-  <input id="detection_interval" type="number" min="1" value="{{ config.detection_interval }}" />
-
-  <label for="threshold">Threshold (0–1)</label>
-  <input id="threshold" type="number" step="0.01" min="0" max="1" value="{{ config.threshold }}" />
-
-  <label><input id="auto_start" type="checkbox" {% if config.auto_start %}checked{% endif %} /> Auto-start detection on boot</label>
-
-  <button class="btn btn-start" id="start">Start detection</button>
-  <button class="btn btn-stop" id="stop">Stop</button>
-
-  <div id="msg"></div>
-</div>
-<script>
-const msg = el => { const d = document.getElementById('msg'); d.className='msg '+(el.ok?'ok':'err');
-  d.innerHTML = el.ok ? (el.detail||'Saved.') : ('Error: '+(el.error||'unknown')); };
-function cfg(){return {camera_entity:document.getElementById('camera').value,
-  detection_interval:parseInt(document.getElementById('detection_interval').value)||1,
-  threshold:parseFloat(document.getElementById('threshold').value)||0.2,
-  auto_start:document.getElementById('auto_start').checked};}
-document.getElementById('start').onclick = async () => {
-  const r = await fetch('api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg())});
-  msg(await r.json());
-};
-document.getElementById('stop').onclick = async () => {
-  const r = await fetch('api/stop',{method:'POST'});
-  msg(await r.json());
-};
-</script>
-</body>
-</html>
-"""
 
 # Auto-start the camera worker at server boot (gunicorn imports this module).
 _auto_start_worker()

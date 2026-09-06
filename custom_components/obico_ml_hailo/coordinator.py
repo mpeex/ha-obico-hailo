@@ -15,9 +15,9 @@ _LOGGER = logging.getLogger(__name__)
 class ObicoDataUpdateCoordinator(DataUpdateCoordinator):
     """Poll the addon's /status endpoint and mirror it as HA entities.
 
-    The addon itself owns frame capture + inference (its camera worker,
-    launched from the web UI, with auto_start), so the integration only
-    mirrors results — it never talks to the camera or the Hailo directly.
+    The addon itself owns frame capture + inference (its camera worker, started
+    via /api/start or auto_start), so the integration only mirrors results — it
+    never talks to the camera or the Hailo directly.
     """
 
     def __init__(

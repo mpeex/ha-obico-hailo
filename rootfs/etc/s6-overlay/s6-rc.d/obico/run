@@ -8,8 +8,8 @@ declare -a options
 
 bashio::log.info 'Starting Obico ML REST API server (Hailo)...'
 
-# Self-contained camera selection (see lib/ha.py + lib/config_store.py).
-# The camera_entity may be left blank and chosen later from the web UI.
+# The camera_entity may be left blank and configured later from the
+# integration options.
 if bashio::config.has_value 'camera_entity'; then
     export CAMERA_ENTITY="$(bashio::config 'camera_entity')"
     bashio::log.info "CAMERA_ENTITY=${CAMERA_ENTITY}"

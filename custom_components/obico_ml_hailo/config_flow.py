@@ -1,24 +1,26 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers import selector
 from .const import DOMAIN, DEFAULT_DETECTION_INTERVAL, DEFAULT_THRESHOLD, DEFAULT_URL
 
 
+def _camera_selector():
+    return selector.EntitySelector(
+        selector.EntitySelectorConfig(domain="camera")
+    )
+
+
 def _create_schema(config_entry=None):
-    if config_entry:
-        return vol.Schema({
-            vol.Required("url", default=config_entry.options.get("url", DEFAULT_URL)): str,
-            vol.Required("detection_interval", default=config_entry.options.get("detection_interval", DEFAULT_DETECTION_INTERVAL)): vol.All(int, vol.Range(min=1)),
-            vol.Required("camera_entity", default=config_entry.options.get("camera_entity", "camera.your_entity")): str,
-            vol.Optional("threshold", default=config_entry.options.get("threshold", DEFAULT_THRESHOLD)): float,
-        })
-    else:
-        return vol.Schema({
-            vol.Required("url", default=DEFAULT_URL): str,
-            vol.Required("detection_interval", default=DEFAULT_DETECTION_INTERVAL): vol.All(int, vol.Range(min=1)),
-            vol.Required("camera_entity", default="camera.your_entity"): str,
-            vol.Optional("threshold", default=DEFAULT_THRESHOLD): float,
-        })
+    camera_default = (
+        config_entry.options.get("camera_entity", "") if config_entry else ""
+    )
+    return vol.Schema({
+        vol.Required("url", default=config_entry.options.get("url", DEFAULT_URL) if config_entry else DEFAULT_URL): str,
+        vol.Required("detection_interval", default=config_entry.options.get("detection_interval", DEFAULT_DETECTION_INTERVAL) if config_entry else DEFAULT_DETECTION_INTERVAL): vol.All(int, vol.Range(min=1)),
+        vol.Required("camera_entity", default=camera_default): _camera_selector(),
+        vol.Optional("threshold", default=config_entry.options.get("threshold", DEFAULT_THRESHOLD) if config_entry else DEFAULT_THRESHOLD): float,
+    })
 
 
 class ObicoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -26,7 +28,7 @@ class ObicoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         if user_input is not None:
-            camera_id = user_input["camera_entity"].replace("camera.", "")
+            camera_id = user_input["camera_entity"].replace("camera.", "") or "default"
             await self.async_set_unique_id(f"{DOMAIN}_{camera_id}", raise_on_progress=False)
             return self.async_create_entry(title=f"Obico ML - {camera_id}", data=user_input)
 
