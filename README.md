@@ -2,7 +2,7 @@
 
 [![Add AddOn to My Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmpeex%2Fspaghetti-rpi5-aikit)
 
-[![Add Integration to My Home Assistant](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=obico_ml_hailo)
+[![HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mpeex&repository=spaghetti-rpi5-aikit&category=integration)
 
 Spaghetti / 3D-print **failure detection** for Home Assistant, running the
 Obico YOLOv5 model on a **Hailo-8 / Hailo-8L** AI accelerator (Raspberry Pi AI
@@ -31,12 +31,26 @@ has no options.
 
 ## Quick start
 
-1. Add this repository to Home Assistant (button above) and install the
-   **Obico ML (Hailo)** addon.
-2. Copy `custom_components/obico_ml_hailo/` into
-   `config/custom_components/obico_ml_hailo/` and restart Home Assistant.
-3. Settings → Devices & Services → Add Integration → *Obico ML (Hailo)* →
-   URL `http://172.30.32.1:3333`, pick a camera, set interval/threshold.
+**1. Addon** — add this repository to Home Assistant (button above) and install
+the **Obico ML (Hailo)** addon.
+
+**2. Integration** — install the companion integration, either via HACS
+(badge above, then *Download* → *Obico ML (Hailo)*) or manually by copying
+`custom_components/obico_ml_hailo/` into `config/custom_components/` (the files
+are also shipped as a zip in every [release](https://github.com/mpeex/spaghetti-rpi5-aikit/releases)).
+Restart Home Assistant if you installed manually.
+
+**3. Configure** — 
+
+[![Add Integration to My Home Assistant](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=obico_ml_hailo)
+
+Add the **Obico ML (Hailo)** integration and set:
+
+- **URL** → `http://172.30.32.1:3333` (the addon's API port on the Supervisor
+  network gateway);
+- **Camera entity** → pick from the `camera.*` dropdown;
+- **Detection interval** (min `1`) and **threshold** → `1` / `0.2` as a
+  starting point.
 
 ## Requirements
 
