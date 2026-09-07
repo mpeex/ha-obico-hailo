@@ -20,10 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- Addon boot after removing Ingress/nginx: `COPY rootfs /` whiteouts the old
-  `nginx` s6 service files but left a stale `dependencies.d` subdir from older
-  layers, which made `s6-rc-compile` fail on a missing `nginx/type`. The
-  Dockerfile now removes the whole `s6-rc.d/nginx` tree explicitly.
+- Addon boot after removing Ingress/nginx: the rootfs still shipped a stale
+  `s6-rc.d/nginx` service stub and a `user` bundle marker pointing at it, so
+  `s6-rc-compile` aborted (`undefined service name nginx`). Both leftovers are
+  removed from the rootfs and the s6-rc tree is re-verified at build time.
 
 ### Removed
 
