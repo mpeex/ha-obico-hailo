@@ -31,7 +31,8 @@ turns `on`, and the confidence sensor tracks how strong the detection is.
 *Addon/integration demo: a Bambu P1S printing a
 [spaghetti-detection test model](https://www.printables.com/model/1477146-spaghetti-detection-test-for-creality-elegoo-bambu)
 from the HA dashboard. The annotated `camera.obico_ml_detection_camera` stream
-is what you see in the video.*
+is what you see in the video. If the player doesn't load, you can
+[download the video directly](demo/spaghetti_detection_demo.mp4).*
 
 ## Features
 
