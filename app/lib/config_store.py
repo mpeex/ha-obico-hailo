@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-"""Persist the addon's camera-selection configuration.
+"""Persist the addon's detection tuning (interval + threshold).
 
-Stored as JSON in /data (the HAOS addon data dir, which is writable).
-Falls back to in-memory storage when /data is not available (local dev).
+The camera and start/stop are owned by the companion integration and passed on
+`/api/start`; only the tuning knobs are stored here. Persisted as JSON in /data
+(the HAOS addon data dir, which is writable). Falls back to in-memory storage
+when /data is not available (local dev).
 """
 
 import json
@@ -15,11 +17,11 @@ _LOGGER = logging.getLogger(__name__)
 DATA_DIR = os.environ.get("OBICO_DATA_DIR", "/data")
 CONFIG_FILE = os.path.join(DATA_DIR, "obico_config.json")
 
+# Internal defaults, in effect until the integration overrides them via
+# /api/start. These are not addon options.
 DEFAULTS = {
-    "camera_entity": "",
     "detection_interval": 1,
     "threshold": 0.2,
-    "auto_start": False,
 }
 
 _lock = threading.Lock()
@@ -34,11 +36,7 @@ def _data_dir_available():
 
 
 def load_config():
-    """Return the current config dict (persisted or env override merged).
-
-    The persisted JSON file is the baseline; addon options exported by the s6
-    run script as environment variables override it per-key.
-    """
+    """Return the current config dict (persisted baseline or in-memory)."""
     cfg = dict(DEFAULTS)
 
     with _lock:
@@ -54,18 +52,6 @@ def load_config():
         else:
             cfg.update(_memory)
 
-    # Environment overrides take precedence (set by the s6 run script).
-    if os.environ.get("CAMERA_ENTITY", ""):
-        cfg["camera_entity"] = os.environ["CAMERA_ENTITY"]
-    for key in ("detection_interval", "threshold"):
-        env = os.environ.get(key.upper(), "")
-        if env:
-            try:
-                cfg[key] = (int if key == "detection_interval" else float)(env)
-            except ValueError:
-                pass
-    if os.environ.get("AUTO_START", "") not in ("", None):
-        cfg["auto_start"] = os.environ["AUTO_START"].lower() in ("1", "true", "yes")
     return cfg
 
 

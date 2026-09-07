@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.15]
+
+### Added
+
+- Integration option `auto_start`: restarts detection whenever the integration
+  is (re)loaded (addon boot, HA core restart, options save).
+- The integration now re-pushes its options to the addon on every setup, so a
+  running worker picks up `detection_interval` / `threshold` / camera changes
+  immediately (posting `/api/start` is idempotent).
+
+### Removed
+
+- All addon options (`camera_entity`, `auto_start`, `detection_interval`,
+  `threshold`): the addon now starts idle and is driven entirely by the
+  companion integration (camera dropdown, detection interval, threshold and
+  auto-start all live in the integration's options flow).
+
 ## [0.14]
 
 ### Changed

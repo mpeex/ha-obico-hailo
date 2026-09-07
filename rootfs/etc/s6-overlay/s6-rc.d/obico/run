@@ -4,24 +4,10 @@
 # Home Assistant Community Add-on: Obico ML (Hailo)
 # Starts the Obico ML REST API server (Hailo-8 / Hailo-8L backend)
 # ==============================================================================
-declare -a options
 
 bashio::log.info 'Starting Obico ML REST API server (Hailo)...'
 
-# The camera_entity may be left blank and configured later from the
-# integration options.
-if bashio::config.has_value 'camera_entity'; then
-    export CAMERA_ENTITY="$(bashio::config 'camera_entity')"
-    bashio::log.info "CAMERA_ENTITY=${CAMERA_ENTITY}"
-fi
-if bashio::config.has_value 'detection_interval'; then
-    export DETECTION_INTERVAL="$(bashio::config 'detection_interval')"
-fi
-if bashio::config.has_value 'threshold'; then
-    export THRESHOLD="$(bashio::config 'threshold')"
-fi
-if bashio::config.true 'auto_start'; then
-    export AUTO_START="true"
-fi
+# The addon has no configuration options: the companion integration drives it
+# through the REST API (camera, detection_interval, threshold, start/stop).
 
 exec gunicorn --bind 0.0.0.0:3333 --chdir /app --limit-request-line 0 --workers 1 wsgi

@@ -32,10 +32,12 @@ logger = logging.getLogger(__name__)
 # The addon pulls the configured camera's snapshot from HA (see lib/ha.py),
 # runs detection on the Hailo and exposes the annotated frame + result through
 # its REST API. The companion integration drives it and mirrors the outcome as
-# registered HA entities.
+# registered HA entities: the camera, the detection pacing and the threshold
+# arrive on /api/start; nothing runs until the integration starts the worker.
 # ---------------------------------------------------------------------------
 cam_state = {
     "running": False,
+    "camera_entity": "",
     "last_error": None,
     "last_detections": [],
     "last_avg_confidence": 0.0,
@@ -58,8 +60,9 @@ def _publish_result(detections):
 
 def _camera_worker():
     while not _stop_event.is_set():
+        with _cam_lock:
+            camera = cam_state.get("camera_entity", "")
         cfg = load_config()
-        camera = cfg.get("camera_entity", "")
         interval = int(cfg.get("detection_interval", 1))
         threshold = float(cfg.get("threshold", 0.2))
         if camera:
@@ -97,16 +100,6 @@ def _ensure_camera_worker_started():
 
 model_dir = path.join(path.dirname(path.realpath(__file__)), 'model')
 net_main = load_net(path.join(model_dir, 'model.cfg'), path.join(model_dir, 'model.meta'))
-
-
-def _auto_start_worker():
-    """Start the camera worker on boot when auto_start is enabled and a
-    camera is configured, so detection resumes without the integration having
-    to toggle the switch after every restart."""
-    cfg = load_config()
-    if cfg.get("auto_start") and cfg.get("camera_entity"):
-        _stop_event.clear()
-        _ensure_camera_worker_started()
 
 
 def draw_bounding_boxes(image, detections):
@@ -217,6 +210,8 @@ def api_last_image():
 @app.route('/api/start', methods=['POST'])
 def api_start():
     data = request.get_json(silent=True) or {}
+    with _cam_lock:
+        cam_state["camera_entity"] = str(data.get("camera_entity", "") or "")
     cfg = save_config(data)
     _stop_event.clear()
     _ensure_camera_worker_started()
@@ -230,9 +225,6 @@ def api_stop():
         cam_state["running"] = False
     return jsonify({"ok": True})
 
-
-# Auto-start the camera worker at server boot (gunicorn imports this module).
-_auto_start_worker()
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=3333, threaded=False)

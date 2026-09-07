@@ -27,11 +27,13 @@ class ObicoDataUpdateCoordinator(DataUpdateCoordinator):
         camera_entity: str,
         detection_interval: int,
         threshold: float,
+        auto_start: bool = False,
     ):
         self._base_url = url.rstrip("/")
         self.camera_entity = camera_entity
         self._interval = detection_interval
         self._threshold = threshold
+        self._auto_start = auto_start
         self._session = aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=10)
         )
@@ -85,6 +87,23 @@ class ObicoDataUpdateCoordinator(DataUpdateCoordinator):
             if resp.status != 200:
                 return None
             return await resp.read()
+
+    async def async_apply_config(self):
+        """Push the current options to the addon.
+
+        Re-posting `/api/start` is idempotent: it (re)applies the configured
+        camera/interval/threshold to a worker that is already running, and
+        re-enables detection after restarts when `auto_start` is set. Errors
+        are logged, not raised, so setup never fails on a busy addon.
+        """
+        if not (
+            self._auto_start or (self.data and self.data.get("running"))
+        ):
+            return
+        try:
+            await self.async_set_running(True)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Could not sync detection config to addon: %s", err)
 
     async def async_shutdown(self):
         """Close the HTTP session."""
