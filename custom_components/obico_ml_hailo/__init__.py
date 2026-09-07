@@ -1,7 +1,7 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
-from .const import DOMAIN, PLATFORMS, DEFAULT_AUTO_START
+from .const import DOMAIN, PLATFORMS
 from .coordinator import ObicoDataUpdateCoordinator
 import logging
 
@@ -27,7 +27,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         camera_entity=cfg.get("camera_entity", ""),
         detection_interval=cfg.get("detection_interval", 1),
         threshold=cfg.get("threshold", 0.2),
-        auto_start=cfg.get("auto_start", DEFAULT_AUTO_START),
     )
 
     try:
@@ -41,8 +40,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Store the coordinator so it can be accessed by entities
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    # (Re)sync the addon worker with the current options: starts it if
-    # auto_start is enabled, and applies option changes to a running worker.
+    # (Re)sync the addon worker with the current options: starts detection
+    # whenever a camera is configured, and applies option changes to a worker
+    # that is already running. No camera configured = addon stays idle.
     hass.async_create_task(coordinator.async_apply_config())
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

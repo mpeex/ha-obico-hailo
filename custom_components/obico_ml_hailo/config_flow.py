@@ -4,7 +4,6 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 from .const import (
     DOMAIN,
-    DEFAULT_AUTO_START,
     DEFAULT_DETECTION_INTERVAL,
     DEFAULT_THRESHOLD,
     DEFAULT_URL,
@@ -24,7 +23,6 @@ def _create_schema(config_entry=None):
         vol.Required("detection_interval", default=cfg.get("detection_interval", DEFAULT_DETECTION_INTERVAL)): vol.All(int, vol.Range(min=1)),
         vol.Required("camera_entity", default=cfg.get("camera_entity", "")): _camera_selector(),
         vol.Optional("threshold", default=cfg.get("threshold", DEFAULT_THRESHOLD)): float,
-        vol.Optional("auto_start", default=cfg.get("auto_start", DEFAULT_AUTO_START)): bool,
     })
 
 
@@ -56,7 +54,7 @@ class ObicoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             new.setdefault("url", DEFAULT_URL)
             new.setdefault("threshold", DEFAULT_THRESHOLD)
-            new.setdefault("auto_start", DEFAULT_AUTO_START)
+            new.pop("auto_start", None)
 
             hass.config_entries.async_update_entry(config_entry, data=new)
 

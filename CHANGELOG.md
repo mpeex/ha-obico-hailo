@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.16]
+
+### Changed
+
+- Detection now (re)starts automatically every time the integration is
+  (re)loaded and a camera is configured: after an addon boot, a HA core restart
+  or an options save the worker is (re)started with the current options
+  (posting `/api/start` is idempotent). With no camera configured the addon
+  stays idle.
+
+### Removed
+
+- Integration option `auto_start`: it was hard to grasp and no longer needed —
+  the "restart on load" behaviour is now always-on whenever a camera is set
+  (`switch.obico_ml_detection` still stops/starts the worker within a session).
+
 ## [0.15]
 
 ### Added
