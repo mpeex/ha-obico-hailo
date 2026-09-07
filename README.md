@@ -18,6 +18,21 @@ Add both the AddOn and the companion Integration using the buttons below (refer 
 All configuration lives in the integration's options flow — the addon itself
 has no options.
 
+## What to expect
+
+Detection runs continuously in the background: snapshots are taken from your
+configured camera entity, pushed through the Hailo, and only the **annotated
+stream** (bounding box + confidence %) is kept in HA. When the model is
+confident enough it prints a **"failure"** bounding box, `binary_sensor.obico_failure`
+turns `on`, and the confidence sensor tracks how strong the detection is.
+
+<video src="demo/spaghetti_detection_demo.mp4" controls loop></video>
+
+*Addon/integration demo: a Bambu P1S printing a
+[spaghetti-detection test model](https://www.printables.com/model/1477146-spaghetti-detection-test-for-creality-elegoo-bambu)
+from the HA dashboard. The annotated `camera.obico_ml_detection_camera` stream
+is what you see in the video.*
+
 ## Features
 
 - Real-time failure detection (`failure`, 1 class) with an annotated stream.
