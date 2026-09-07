@@ -1,6 +1,8 @@
 # Obico ML (Hailo) — Home Assistant Addon
 
-[![](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmpeex%2Fspaghetti-rpi5-aikit)
+[![Add AddOn to My Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmpeex%2Fspaghetti-rpi5-aikit)
+
+[![Add Integration to My Home Assistant](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=obico_ml_hailo)
 
 Spaghetti / 3D-print **failure detection** for Home Assistant, running the
 Obico YOLOv5 model on a **Hailo-8 / Hailo-8L** AI accelerator (Raspberry Pi AI
