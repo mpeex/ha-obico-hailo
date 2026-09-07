@@ -26,12 +26,12 @@ stream** (bounding box + confidence %) is kept in HA. When the model is
 confident enough it prints a **"failure"** bounding box, `binary_sensor.obico_failure`
 turns `on`, and the confidence sensor tracks how strong the detection is.
 
-[![Watch the demo video](demo/spaghetti_detection_demo.gif)](https://github.com/mpeex/ha-obico-hailo/blob/main/demo/spaghetti_detection_demo.mp4)
+[![Watch the demo video](demo/spaghetti_detection_demo_poster.jpg)](https://github.com/mpeex/ha-obico-hailo/blob/main/demo/spaghetti_detection_demo.mp4)
 
 *Demo: a Bambu P1S printing a
 [spaghetti-detection test model](https://www.printables.com/model/1477146-spaghetti-detection-test-for-creality-elegoo-bambu)
 from the HA dashboard. The annotated `camera.obico_ml_detection_camera` stream
-is what you see above. [Click for the full video
+is what you see above. [Click for the video
 (MP4)](https://github.com/mpeex/ha-obico-hailo/blob/main/demo/spaghetti_detection_demo.mp4).*
 
 ## Features
