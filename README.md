@@ -1,12 +1,11 @@
-# Obico ML (Hailo) — Home Assistant Addon
+# **Unofficial** port of Obico Spaghetti Detection for Hailo 8/8L — Home Assistant Addon + Integration
+
+Add both the AddOn and the companion Integration using the button below (refer to the Quick start section):
 
 [![Add AddOn to My Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmpeex%2Fha-obico-hailo)
 
 [![HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mpeex&repository=ha-obico-hailo&category=integration)
 
-Spaghetti / 3D-print **failure detection** for Home Assistant, running the
-Obico YOLOv5 model on a **Hailo-8 / Hailo-8L** AI accelerator (Raspberry Pi AI
-HAT+).
 
 ## What it is
 
@@ -54,7 +53,7 @@ Add the **Obico ML (Hailo)** integration and set:
 
 ## Requirements
 
-- Raspberry Pi 5 (or x64) with a Hailo-8 / Hailo-8L AI HAT+, HailoRT installed
+- Raspberry Pi 5 (or x64 but untested) with a Hailo-8 / Hailo-8L AI HAT+, HailoRT installed
   and `hailort_service` running so `/dev/hailo0` is present.
 - Home Assistant core ≥ `2026.9.0`.
 
