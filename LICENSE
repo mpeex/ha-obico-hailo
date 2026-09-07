@@ -659,3 +659,135 @@ specific requirements.
 if any, to sign a "copyright disclaimer" for the program, if necessary.
 For more information on this, and how to apply and follow the GNU AGPL, see
 <https://www.gnu.org/licenses/>.
+
+================================================================================
+
+THIRD-PARTY LICENSES AND REDISTRIBUTED COMPONENTS
+================================================================================
+
+This project (the Home Assistant addon "Obico ML (Hailo)" and its companion
+integration) is licensed under the GNU Affero General Public License v3.0
+(reprinted above). The software also builds on, and, at runtime, redistributes
+the following third-party components under their own licenses. Full texts of
+the licenses that must accompany redistribution are provided next to this
+file and inside the container image where noted.
+
+1. Obico Server (Hailo inference runtime + model artifacts)
+   ----------------------------------------------------------------------------
+   Source : https://github.com/TheSpaghettiDetective/obico-server (AGPL-3.0)
+   License: GNU Affero General Public License v3.0
+   Used in: app/lib/hailo.py, app/lib/meta.py, app/lib/geometry.py,
+            app/lib/detection_model.py, app/detect.py and the compiled model
+            files under app/model/ (obico_part*.hef, decode.onnx, model.*).
+            The HEF/ONNX artifacts are compiled from the Obico YOLOv5
+   failure-detection model and are distributed under the same AGPL-3.0 terms.
+
+2. obico_ml_ha_addon (addon scaffolding: repository/s6 layout)
+   ----------------------------------------------------------------------------
+   Source : https://github.com/nobodyguy/obico_ml_ha_addon (MIT)
+   License: MIT License
+   Used in: addon skeleton, rootfs s6-rc service layout, repository.yaml.
+
+   MIT License
+
+   Copyright (c) 2024 Jan
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to
+   deal in the Software without restriction, including without limitation the
+   rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+   sell copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   DEALINGS IN THE SOFTWARE.
+
+3. HailoRT (redistributed binaries inside the container image)
+   ----------------------------------------------------------------------------
+   Source : https://github.com/hailo-ai/hailort (branch hailo8)
+   The HailoRT runtime is unpacked into the image to drive the /dev/hailo0
+   device. Redistribution is permitted under:
+   - MIT License            for libhailort, pyhailort and hailortcli;
+   - LGPL-2.1-or-later      for the GStreamer "hailonet" plugin.
+   License texts: hailo_assets/licenses/LICENSE-HailoRT-MIT.txt and
+   hailo_assets/licenses/LICENSE-HailoRT-LGPL-2.1.txt (copied into the image
+   under /usr/share/licenses/hailort/).
+
+4. s6-overlay (process supervisor, bundled in the image)
+   ----------------------------------------------------------------------------
+   Source : https://github.com/just-containers/s6-overlay (v3.2.0.0)
+   License: ISC License (Internet Systems Consortium)
+
+   Copyright (c) 2021-2024 Laurent Bercot <ska-skaware@skarnet.org>,
+   John Regan <john@jrjrtech.com>
+
+   Permission to use, copy, modify, and distribute this software for any
+   purpose with or without fee is hereby granted, provided that the above
+   copyright notice and this permission notice appear in all copies.
+
+   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+   OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+   CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+5. bashio (Home Assistant addon bash helpers, bundled in the image)
+   ----------------------------------------------------------------------------
+   Source : https://github.com/hassio-addons/bashio
+   License: MIT License
+
+   Copyright (c) 2019-2026 Franck Nijhof
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to
+   deal in the Software without restriction, including without limitation the
+   rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+   sell copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   DEALINGS IN THE SOFTWARE.
+
+6. tempio (templating engine for addon config, bundled in the image)
+   ----------------------------------------------------------------------------
+   Source : https://github.com/home-assistant/tempio
+   License: Apache License 2.0. See the Apache-2.0 license text (not reprinted
+   here) at https://www.apache.org/licenses/LICENSE-2.0 or on the upstream
+   repository.
+
+7. Python packages installed into the container image via pip
+   ----------------------------------------------------------------------------
+   These third-party packages are installed as dependencies of the image and
+   keep their own licenses (installed as part of the distribution):
+   - Flask / gunicorn / Flask-Compress (BSD-3-Clause, MIT, MIT)
+   - requests (Apache-2.0)
+   - ipdb (BSD-3-Clause)
+   - newrelic (Apache-2.0)
+   - onnxruntime (MIT)
+   - opencv-python-headless (Apache-2.0)
+   - HailoRT Python wheel pyhailort (MIT, see item 3)
+
+   The full texts are available in the packages' distributions inside the image
+   (site-packages) and on the respective upstream repositories.
+
+If you intend to distribute or sell this addon, please make sure you comply
+with the obligations of all the licenses listed above (title, notice and
+source-code requirements, copyleft terms of the AGPL-3.0 and LGPL-2.1).

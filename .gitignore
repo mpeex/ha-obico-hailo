@@ -221,5 +221,10 @@ __marimo__/
 hailo_assets/*.deb
 hailo_assets/*.whl
 
+# Local helper script for cross-building/publishing container images.
+# The public build path is the GitHub workflow (home-assistant/builder);
+# this file is a per-developer convenience and must not be published.
+build-push.sh
+
 # macOS
 .DS_Store
