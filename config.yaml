@@ -5,7 +5,7 @@ description: >-
   Home Assistant addon for Obico ML-based spaghetti/failure detection on a
   Raspberry Pi 5 with a Hailo-8 / Hailo-8L AI accelerator (Raspberry Pi AI
   HAT+). Runs the Obico YOLOv5 model from compiled HEFs on the Hailo device.
-url: https://github.com/mpeex/spaghetti-rpi5-aikit
+url: https://github.com/mpeex/ha-obico-hailo
 image: ghcr.io/mpeex/obico_ml_hailo_addon-{arch}
 arch:
   - aarch64

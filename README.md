@@ -1,8 +1,8 @@
 # Obico ML (Hailo) — Home Assistant Addon
 
-[![Add AddOn to My Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmpeex%2Fspaghetti-rpi5-aikit)
+[![Add AddOn to My Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmpeex%2Fha-obico-hailo)
 
-[![HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mpeex&repository=spaghetti-rpi5-aikit&category=integration)
+[![HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mpeex&repository=ha-obico-hailo&category=integration)
 
 Spaghetti / 3D-print **failure detection** for Home Assistant, running the
 Obico YOLOv5 model on a **Hailo-8 / Hailo-8L** AI accelerator (Raspberry Pi AI
@@ -37,7 +37,7 @@ the **Obico ML (Hailo)** addon.
 **2. Integration** — install the companion integration, either via HACS
 (badge above, then *Download* → *Obico ML (Hailo)*) or manually by copying
 `custom_components/obico_ml_hailo/` into `config/custom_components/` (the files
-are also shipped as a zip in every [release](https://github.com/mpeex/spaghetti-rpi5-aikit/releases)).
+are also shipped as a zip in every [release](https://github.com/mpeex/ha-obico-hailo/releases)).
 Restart Home Assistant if you installed manually.
 
 **3. Configure** — 

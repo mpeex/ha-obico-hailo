@@ -206,9 +206,9 @@ LABEL \
     org.opencontainers.image.vendor="mpeex" \
     org.opencontainers.image.authors="mpeex" \
     org.opencontainers.image.licenses="AGPL-3.0" \
-    org.opencontainers.image.url="https://github.com/mpeex/spaghetti-rpi5-aikit" \
-    org.opencontainers.image.source="https://github.com/mpeex/spaghetti-rpi5-aikit" \
-    org.opencontainers.image.documentation="https://github.com/mpeex/spaghetti-rpi5-aikit/blob/main/README.md" \
+    org.opencontainers.image.url="https://github.com/mpeex/ha-obico-hailo" \
+    org.opencontainers.image.source="https://github.com/mpeex/ha-obico-hailo" \
+    org.opencontainers.image.documentation="https://github.com/mpeex/ha-obico-hailo/blob/main/README.md" \
     org.opencontainers.image.created=${BUILD_DATE} \
     org.opencontainers.image.revision=${BUILD_REF} \
     org.opencontainers.image.version=${BUILD_VERSION}
