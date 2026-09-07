@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Detection is driven by a single `detection_interval` option (seconds,
   minimum `1`, default `1`) replacing the `max_fps` throttle and the old
   `interval` option.
-- Companion integration (1.3.0): renamed `interval` to `detection_interval`
+- Companion integration (0.14): renamed `interval` to `detection_interval`
   (minimum `1`, default `1`) in the options flow and in the `/api/start`
   payload.
 - Integration options now pick the camera from a native HA dropdown (`entity`
