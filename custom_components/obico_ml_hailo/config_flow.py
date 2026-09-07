@@ -12,19 +12,47 @@ def _camera_selector():
 
 
 def _create_schema(config_entry=None):
-    camera_default = (
-        config_entry.options.get("camera_entity", "") if config_entry else ""
-    )
+    cfg = {**config_entry.data, **config_entry.options} if config_entry else {}
     return vol.Schema({
-        vol.Required("url", default=config_entry.options.get("url", DEFAULT_URL) if config_entry else DEFAULT_URL): str,
-        vol.Required("detection_interval", default=config_entry.options.get("detection_interval", DEFAULT_DETECTION_INTERVAL) if config_entry else DEFAULT_DETECTION_INTERVAL): vol.All(int, vol.Range(min=1)),
-        vol.Required("camera_entity", default=camera_default): _camera_selector(),
-        vol.Optional("threshold", default=config_entry.options.get("threshold", DEFAULT_THRESHOLD) if config_entry else DEFAULT_THRESHOLD): float,
+        vol.Required("url", default=cfg.get("url", DEFAULT_URL)): str,
+        vol.Required("detection_interval", default=cfg.get("detection_interval", DEFAULT_DETECTION_INTERVAL)): vol.All(int, vol.Range(min=1)),
+        vol.Required("camera_entity", default=cfg.get("camera_entity", "")): _camera_selector(),
+        vol.Optional("threshold", default=cfg.get("threshold", DEFAULT_THRESHOLD)): float,
     })
 
 
 class ObicoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 1
+    VERSION = 2
+
+    @staticmethod
+    async def async_migrate_entry(hass, config_entry):
+        """Migrate legacy (v1) entries to the current schema.
+
+        Renames the old `interval` option to `detection_interval` and clears
+        the old `camera.your_entity` placeholder so the camera has to be chosen
+        again from the native HA dropdown.
+        """
+        if config_entry.version < 2:
+            new = {**config_entry.data, **config_entry.options}
+
+            if "interval" in new and "detection_interval" not in new:
+                try:
+                    new["detection_interval"] = int(new.pop("interval"))
+                except (TypeError, ValueError):
+                    new.pop("interval", None)
+            new.setdefault("detection_interval", DEFAULT_DETECTION_INTERVAL)
+
+            cam = str(new.get("camera_entity", "") or "")
+            if cam in ("camera.your_entity", "camera.Your camera entity"):
+                cam = ""
+            new["camera_entity"] = cam
+
+            new.setdefault("url", DEFAULT_URL)
+            new.setdefault("threshold", DEFAULT_THRESHOLD)
+
+            hass.config_entries.async_update_entry(config_entry, data=new)
+
+        return True
 
     async def async_step_user(self, user_input=None):
         if user_input is not None:

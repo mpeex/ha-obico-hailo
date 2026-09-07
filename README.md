@@ -171,7 +171,7 @@ addon options so detection resumes on boot). It exposes:
 
 ## Endpoints (port 3333)
 
-The Flask app listens on `3333`; the integration talks to it over the
+The addon API listens on `3333`; the integration talks to it over the
 Supervisor network (`http://172.30.32.1:3333`):
 
 - `GET/POST /api/config` → read/update `camera_entity`, `detection_interval`, `threshold`
