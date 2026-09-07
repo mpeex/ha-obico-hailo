@@ -62,6 +62,8 @@ Add the **Obico ML (Hailo)** integration and set:
 
 - [`architecture.md`](architecture.md) — model pipeline, REST API, build and
   publish details.
+- [`model/README.md`](model/README.md) — rebuild the `.hef` models from the
+  official Obico ONNX export.
 - [`CHANGELOG.md`](CHANGELOG.md)
 - [`LICENSE`](LICENSE) — AGPL-3.0 plus the licenses of all redistributed
   third-party components.
